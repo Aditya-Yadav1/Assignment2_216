@@ -1,7 +1,7 @@
 # Makefile for RISC-V Processor Simulator
 
 CXX = g++
-CXXFLAGS = -std=c++11 -Wall -O3
+CXXFLAGS = -Wall -O3
 
 TARGETS = noforward
 

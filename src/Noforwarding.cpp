@@ -10,6 +10,11 @@ struct Instr {
   int imm;
 };
 
+vector<Instr> instructions;
+int registers[32] = {0};
+int in_use[32] = {0};
+string stages[6] = {"IF", "ID", "EX", "MEM", "WB", "*"};
+
 class Processor {
   vector<vector<string>> pipeline;
 
@@ -17,22 +22,48 @@ class Processor {
   Processor(int total_inst, int cycle_count) {
     pipeline.resize(total_inst, vector<string>(cycle_count, "-"));
   }
-  void run() {}
+  void run() {
+    int n = size(instructions), m = size(pipeline[0]);
+    bool check[m][5] = {};
+    for (int i = 0; i < n; i++) {
+      int curr_stage = 0;
+      for (int j = 0; j < m; j++) {
+        if (check[j][curr_stage]) {
+          pipeline[i][j] = stages[5];
+          continue;
+        } else {
+          if (curr_stage == 1) {
+            int rd = instructions[i].rd;
+            int rs1 = instructions[i].rs1;
+            int rs2 = instructions[i].rs2;
+
+            if (in_use[rs1] || (rs2 != -1 && in_use[rs2])) {
+              pipeline[i][j] = stages[5];  // Stall
+            } else {
+              pipeline[i][j] = stages[curr_stage];
+              check[j][curr_stage] = true;
+              curr_stage++;
+              in_use[rd] = true;  // Mark destination register as in use
+            }
+          } else {
+            pipeline[i][j] = stages[curr_stage];
+            check[j][curr_stage] = true;
+            curr_stage++;
+          }
+        }
+      }
+    }
+  }
 
   void print() {
-    for (int i = 0; i < size(pipeline); i++) {
-      for (int j = 0; j < size(pipeline[i]); j++) {
+    for (int i = 0; i < (int)size(pipeline); i++) {
+      for (int j = 0; j < (int)size(pipeline[i]); j++) {
         cout << pipeline[i][j] << ";";
       }
       cout << endl;
     }
   };
 };
-
-vector<Instr> instructions;
-int registers[32] = {0};
-int in_use[32] = {0};
-string stages[5] = {"IF", "ID", "EX", "MEM", "WB"};
 
 void load_instructions(string filename) {
   ifstream file(filename);
