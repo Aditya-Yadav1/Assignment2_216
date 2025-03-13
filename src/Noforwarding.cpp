@@ -8,18 +8,9 @@
 #include "ProcessorSimulator.hpp"
 using namespace std;
 
-// (Optional) Function to extract a register number from a string like "x5".
-int extractRegNum(const string& reg) {
-  if (reg[0] == 'x' || reg[0] == 'X')
-    return stoi(reg.substr(1));
-  return -1;  // Invalid register
-}
-
 class NonForwardingProcessor : public ProcessorSimulator {
  private:
-  // Map to track the cycle when a register becomes available.
-  unordered_map<int, int> reg_ready_cycle;
-  // Parse an instruction string to extract opcode and register operands.
+  unordered_map<int, int> reg_ready;
   InstrInfo parseInstruction(const string& assembly) {
     InstrInfo info;
     size_t pos = assembly.find(' ');
@@ -86,7 +77,6 @@ class NonForwardingProcessor : public ProcessorSimulator {
     }
     return info;
   }
-  // Structure to hold the state for a single pipeline stage.
   struct PipelineState {
     int instr_idx = -1;
     bool stalled = false;
@@ -94,7 +84,7 @@ class NonForwardingProcessor : public ProcessorSimulator {
   };
 
  public:
-  int register_file[32] = {0};  // Register file (not used for computation in this simplified model)
+  int register_file[32] = {0};
   bool in_use[32] = {0};
 
   void simulate(int cycleCount) {
@@ -102,138 +92,107 @@ class NonForwardingProcessor : public ProcessorSimulator {
       cerr << "No instructions loaded." << endl;
       exit(1);
     }
-    const int numStages = 5;  // IF, ID, EX, MEM, WB
-    const string stageNames[numStages] = {"IF", "ID", "EX", "MEM", "WB"};
 
-    // Create a 2D array to track which instruction is in which stage at each cycle
-    // For each instruction, we'll track its position in the pipeline for each cycle
-    int maxInstructions = instructions.size();
-    vector<vector<string>> instructionStages(maxInstructions, vector<string>(cycleCount + 1, "-"));
-
-    // Initialize all registers to be available at cycle 0.
     for (int i = 0; i < 32; i++) {
-      reg_ready_cycle[i] = 0;
+      reg_ready[i] = 0;
     }
 
-    // Create a vector to hold the state for each pipeline stage.
-    vector<PipelineState> curr_pipe(numStages);
-    int next_instr_to_issue = 0;
+    vector<vector<string>> pipeline(instructions.size(), vector<string>(cycleCount + 1, "-"));
+    vector<vector<int>> stageInstr(5, vector<int>(cycleCount + 1, -1));
 
-    // Main simulation loop (each iteration represents one cycle).
-    for (int cycle = 1; cycle <= cycleCount; ++cycle) {
-      // --- WB Stage (stage 4) ---
-      if (curr_pipe[4].instr_idx != -1) {
-        int idx = curr_pipe[4].instr_idx;
-        string instr = instructions[idx].assembly;
+    int current_instr = 0;
+
+    // For each cycle
+    for (int cycle = 1; cycle <= cycleCount; cycle++) {
+      // First, handle WB stage (stage 4)
+      if (stageInstr[4][cycle - 1] != -1) {
+        int instr_idx = stageInstr[4][cycle - 1];
+        string instr = instructions[instr_idx].assembly;
         InstrInfo info = parseInstruction(instr);
-        // Mark destination registers as available from the current cycle.
+
+        // Mark destination registers as available
         for (int reg : info.dest_regs) {
-          if (reg != 0)
-            reg_ready_cycle[reg] = cycle;
+          if (reg != 0) {
+            reg_ready[reg] = cycle;
+          }
         }
-        instructionStages[idx][cycle] = "WB";
-        curr_pipe[4] = PipelineState();  // Clear WB stage.
+        pipeline[instr_idx][cycle] = "WB";
       }
 
-      // --- MEM Stage (stage 3) ---
-      if (curr_pipe[3].instr_idx != -1 && !curr_pipe[3].stalled) {
-        int idx = curr_pipe[3].instr_idx;
-        instructionStages[idx][cycle] = "MEM";
-        curr_pipe[4].instr_idx = idx;
-        curr_pipe[4].display_text = curr_pipe[3].display_text;
-        curr_pipe[3] = PipelineState();  // Clear MEM stage.
+      // Handle MEM stage (stage 3)
+      if (stageInstr[3][cycle - 1] != -1) {
+        int instr_idx = stageInstr[3][cycle - 1];
+        pipeline[instr_idx][cycle] = "MEM";
+        stageInstr[4][cycle] = instr_idx;
       }
 
-      // --- EX Stage (stage 2) ---
-      if (curr_pipe[2].instr_idx != -1 && !curr_pipe[2].stalled) {
-        int idx = curr_pipe[2].instr_idx;
-        instructionStages[idx][cycle] = "EX";
-        curr_pipe[3].instr_idx = idx;
-        curr_pipe[3].display_text = curr_pipe[2].display_text;
-        curr_pipe[2] = PipelineState();  // Clear EX stage.
+      // Handle EX stage (stage 2)
+      if (stageInstr[2][cycle - 1] != -1) {
+        int instr_idx = stageInstr[2][cycle - 1];
+        pipeline[instr_idx][cycle] = "EX";
+        stageInstr[3][cycle] = instr_idx;
       }
 
-      // --- ID Stage (stage 1) ---
-      if (curr_pipe[1].instr_idx != -1 && !curr_pipe[1].stalled) {
-        int idx = curr_pipe[1].instr_idx;
-        string instr = instructions[idx].assembly;
+      // Handle ID stage (stage 1)
+      if (stageInstr[1][cycle - 1] != -1) {
+        int instr_idx = stageInstr[1][cycle - 1];
+        string instr = instructions[instr_idx].assembly;
         InstrInfo info = parseInstruction(instr);
+
         bool has_dependency = false;
-        // Check if any source register is not available.
+        // Check for dependencies
         for (int reg : info.src_regs) {
-          // If the register is scheduled to be ready in a future cycle, a dependency exists.
-          if (reg != 0 && reg_ready_cycle[reg] > cycle) {
+          if (reg != 0 && reg_ready[reg] > cycle) {
             has_dependency = true;
             break;
           }
         }
+
         if (!has_dependency) {
-          // No dependency; advance instruction from ID to EX.
-          instructionStages[idx][cycle] = "ID";
-          curr_pipe[2].instr_idx = idx;
-          curr_pipe[2].display_text = curr_pipe[1].display_text;
-          // Mark destination registers as busy until this instruction completes WB.
+          pipeline[instr_idx][cycle] = "ID";
+          stageInstr[2][cycle] = instr_idx;
+          // Mark destination registers as busy until WB
           for (int reg : info.dest_regs) {
-            if (reg != 0)
-              reg_ready_cycle[reg] = cycle + 3;  // Available after three more stages.
+            if (reg != 0) {
+              reg_ready[reg] = cycle + 3;  // Available after WB
+            }
           }
-          curr_pipe[1] = PipelineState();  // Clear ID stage.
         } else {
-          // Dependency detected; stall the instruction in ID.
-          instructionStages[idx][cycle] = "-";
-          curr_pipe[1].stalled = true;
+          pipeline[instr_idx][cycle] = "*";  // Stall
+          stageInstr[1][cycle] = instr_idx;  // Keep in ID stage
         }
-      } else if (curr_pipe[1].instr_idx != -1 && curr_pipe[1].stalled) {
-        // If the instruction is stalled in ID, mark it as stalled in this cycle too
-        int idx = curr_pipe[1].instr_idx;
-        instructionStages[idx][cycle] = "-";  // Use "-" for a stall
       }
 
-      // --- IF Stage (stage 0) ---
-      if (curr_pipe[0].instr_idx != -1 && !curr_pipe[0].stalled) {
-        int idx = curr_pipe[0].instr_idx;
-        if (curr_pipe[1].instr_idx == -1) {
-          // Move instruction from IF to ID if ID is free.
-          instructionStages[idx][cycle] = "IF";
-          curr_pipe[1].instr_idx = idx;
-          curr_pipe[1].display_text = curr_pipe[0].display_text;
-          curr_pipe[0] = PipelineState();  // Clear IF stage.
+      // Handle IF stage (stage 0)
+      if (stageInstr[0][cycle - 1] != -1) {
+        int instr_idx = stageInstr[0][cycle - 1];
+        if (stageInstr[1][cycle] == -1) {  // If ID is free
+          pipeline[instr_idx][cycle] = "IF";
+          stageInstr[1][cycle] = instr_idx;
         } else {
-          // If ID is busy, stall IF.
-          instructionStages[idx][cycle] = "-";
-          curr_pipe[0].stalled = true;
+          pipeline[instr_idx][cycle] = "*";  // Stall
+          stageInstr[0][cycle] = instr_idx;  // Keep in IF stage
         }
-      } else if (curr_pipe[0].instr_idx != -1 && curr_pipe[0].stalled) {
-        // If the instruction is stalled in IF, mark it as stalled in this cycle too
-        int idx = curr_pipe[0].instr_idx;
-        instructionStages[idx][cycle] = "-";  // Use "-" for a stall
       }
 
-      // --- Fetch a New Instruction if IF is Empty ---
-      if (curr_pipe[0].instr_idx == -1 && next_instr_to_issue < (int)instructions.size()) {
-        int idx = next_instr_to_issue;
-        curr_pipe[0].instr_idx = idx;
-        string assembly = instructions[idx].assembly;
-        size_t pos = assembly.find(' ');
-        string opcode = (pos != string::npos) ? assembly.substr(0, pos) : assembly;
-        curr_pipe[0].display_text = opcode;
-        instructionStages[idx][cycle] = "IF";
-        next_instr_to_issue++;
+      // Fetch new instruction if IF is empty and we haven't processed all instructions
+      if (stageInstr[0][cycle - 1] == -1 && stageInstr[0][cycle] == -1 && current_instr < (int)instructions.size()) {
+        stageInstr[0][cycle] = current_instr;
+        pipeline[current_instr][cycle] = "IF";
+        current_instr++;
       }
     }
 
-    for (int i = 0; i < maxInstructions; i++) {
-      if (i >= (int)instructions.size()) break;
-      string instr = instructions[i].assembly;
-      cout << instr;
+    // Print the pipeline diagram
+    for (int i = 0; i < (int)instructions.size(); i++) {
+      cout << instructions[i].assembly;
       for (int cycle = 1; cycle <= cycleCount; cycle++) {
         cout << ";";
-        if (instructionStages[i][cycle] == "stall") {
-          cout << "*";  // Use "-" for a stall or empty
-        } else if (instructionStages[i][cycle] == "-") {
-          cout << "-";
+        // Only show pipeline stages for instructions up to current_instr
+        if (i < current_instr) {
+          cout << pipeline[i][cycle];
         } else {
-          cout << instructionStages[i][cycle];
+          cout << "-";
         }
       }
       cout << endl;
