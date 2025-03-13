@@ -3,7 +3,7 @@
 CXX = g++
 CXXFLAGS = -std=c++11 -Wall -O3
 
-TARGETS = noforward forward
+TARGETS = noforward
 
 all: $(TARGETS)
 
@@ -12,6 +12,8 @@ noforward: Noforwarding.cpp ProcessorSimulator.cpp ProcessorSimulator.hpp
 
 forward: Forwarding.cpp ProcessorSimulator.cpp ProcessorSimulator.hpp
 	$(CXX) $(CXXFLAGS) -o forward Forwarding.cpp ProcessorSimulator.cpp
+test: noforward
+	./noforward ../input/tc1.txt 20
 
 clean:
 	rm -f $(TARGETS)
