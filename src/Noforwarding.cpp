@@ -11,9 +11,8 @@ struct Instr {
 };
 
 vector<Instr> instructions;
-int registers[32] = {0};
-int in_use[32] = {0};
-string stages[6] = {"IF", "ID", "EX", "MEM", "WB", "*"};
+// int registers[32] = {0};
+string stages[6] = {"IF", "ID", "EX", "MEM", "WB", "* "};
 
 class Processor {
   vector<vector<string>> pipeline;
@@ -24,7 +23,8 @@ class Processor {
   }
   void run() {
     int n = size(instructions), m = size(pipeline[0]);
-    bool check[m][5] = {};
+    vector<vector<bool>> check(m, vector<bool>(5, false));
+    vector<vector<bool>> in_use(32, vector<bool>(m, false));
     for (int i = 0; i < n; i++) {
       int curr_stage = 0;
       for (int j = 0; j < m; j++) {
@@ -32,23 +32,28 @@ class Processor {
           pipeline[i][j] = stages[5];
           continue;
         } else {
+          int rd = instructions[i].rd;
+          int rs1 = instructions[i].rs1;
+          int rs2 = instructions[i].rs2;
           if (curr_stage == 1) {
-            int rd = instructions[i].rd;
-            int rs1 = instructions[i].rs1;
-            int rs2 = instructions[i].rs2;
-
-            if (in_use[rs1] || (rs2 != -1 && in_use[rs2])) {
+            if (in_use[rs1][j] || (rs2 != -1 && in_use[rs2][j])) {
               pipeline[i][j] = stages[5];  // Stall
             } else {
               pipeline[i][j] = stages[curr_stage];
               check[j][curr_stage] = true;
               curr_stage++;
-              in_use[rd] = true;  // Mark destination register as in use
+              in_use[rd][min(j + 1, m - 1)] = true;
             }
           } else {
             pipeline[i][j] = stages[curr_stage];
             check[j][curr_stage] = true;
             curr_stage++;
+          }
+          if (curr_stage > 4) {
+            for (int k = j + 1; k < m; k++) {
+              in_use[rd][k] = false;
+            }
+            break;
           }
         }
       }
@@ -71,29 +76,24 @@ void load_instructions(string filename) {
   while (getline(file, line)) {
     istringstream iss(line);
     Instr instr;
-    // Get machine code and assembly
     iss >> instr.machineCode;
     string assembly;
     getline(iss >> ws, assembly);
-    // Parse assembly instruction
+
     istringstream ass_stream(assembly);
     ass_stream >> instr.opcode;
 
     if (instr.opcode == "addi") {
-      // Format: addi rd, rs1, imm
-      string rd_str, rs1_str, imm_str;
-      getline(ass_stream >> ws, rd_str, ',');
-      getline(ass_stream >> ws, rs1_str, ',');
-      ass_stream >> imm_str;
+      string rd_str, rs1_str;
+      int imm;
+      ass_stream >> rd_str >> rs1_str >> imm;
       instr.rd = stoi(rd_str.substr(1));
       instr.rs1 = stoi(rs1_str.substr(1));
-      instr.imm = stoi(imm_str);
-      instr.rs2 = -1;  // Not used for addi
+      instr.imm = imm;
+      instr.rs2 = -1;
     } else if (instr.opcode == "add") {
       string rd_str, rs1_str, rs2_str;
-      getline(ass_stream >> ws, rd_str, ',');
-      getline(ass_stream >> ws, rs1_str, ',');
-      ass_stream >> rs2_str;
+      ass_stream >> rd_str >> rs1_str >> rs2_str;
       instr.rd = stoi(rd_str.substr(1));
       instr.rs1 = stoi(rs1_str.substr(1));
       instr.rs2 = stoi(rs2_str.substr(1));
@@ -103,7 +103,7 @@ void load_instructions(string filename) {
   }
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   if (argc != 3) {
     cout << "Usage: " << argv[0] << " <input> <cycle_count>" << endl;
     return 1;
