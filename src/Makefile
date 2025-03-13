@@ -7,11 +7,11 @@ TARGETS = noforward
 
 all: $(TARGETS)
 
-noforward: Noforwarding.cpp ProcessorSimulator.cpp ProcessorSimulator.hpp
-	$(CXX) $(CXXFLAGS) -o noforward Noforwarding.cpp ProcessorSimulator.cpp
+noforward: Noforwarding.cpp 
+	$(CXX) $(CXXFLAGS) -o noforward Noforwarding.cpp
 
-forward: Forwarding.cpp ProcessorSimulator.cpp ProcessorSimulator.hpp
-	$(CXX) $(CXXFLAGS) -o forward Forwarding.cpp ProcessorSimulator.cpp
+forward: Forwarding.cpp
+	$(CXX) $(CXXFLAGS) -o forward Forwarding.cpp
 test: noforward
 	./noforward ../input/tc1.txt 20
 
