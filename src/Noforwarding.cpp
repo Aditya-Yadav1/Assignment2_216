@@ -48,9 +48,10 @@ class Processor {
             pipeline[i][j] = stages[curr_stage];
             check[j][curr_stage] = true;
             curr_stage++;
+            in_use[rd][min(j + 1, m - 1)] = in_use[rd][j];
           }
           if (curr_stage > 4) {
-            for (int k = j + 1; k < m; k++) {
+            for (int k = j; k < m; k++) {
               in_use[rd][k] = false;
             }
             break;
