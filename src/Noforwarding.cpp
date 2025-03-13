@@ -28,6 +28,7 @@ class Processor {
     vector<vector<bool>> in_use(32, vector<bool>(m, false));
     for (int i = 0; i < n; i++) {
       int curr_stage = 0;
+      int rd = -1, rs1 = -1, rs2 = -1;
       for (int j = 0; j < m; j++) {
         if (check[j][curr_stage]) {
           if (curr_stage != 0) {
@@ -35,27 +36,29 @@ class Processor {
           }
           continue;
         } else {
-          int rd = instructions[i].rd;
-          int rs1 = instructions[i].rs1;
-          int rs2 = instructions[i].rs2;
           if (curr_stage == 1) {
-            if (in_use[rs1][j] || (rs2 != -1 && in_use[rs2][j])) {
-              pipeline[i][j] = stages[5];  // Stall
-            } else {
+            if (rd == -1) {
               pipeline[i][j] = stages[curr_stage];
-              check[j][curr_stage] = true;
-              curr_stage++;
-              in_use[rd][min(j + 1, m - 1)] = true;
+              rs1 = instructions[i].rs1, rs2 = instructions[i].rs2, rd = instructions[i].rd;
             }
+            if (in_use[rs1][j + 1] || (rs2 != -1 && in_use[rs2][j + 1])) {
+              pipeline[i][j + 1] = stages[5];  // Stall
+            } else {
+              curr_stage++;
+            }
+            check[j][1] = true;
+            in_use[rd][min(j + 1, m - 1)] = true;
           } else {
             pipeline[i][j] = stages[curr_stage];
             check[j][curr_stage] = true;
             curr_stage++;
-            in_use[rd][min(j + 1, m - 1)] = in_use[rd][j];
+            if (rd != -1)
+              in_use[rd][min(j + 1, m - 1)] = in_use[rd][j];
           }
           if (curr_stage > 4) {
-            for (int k = j; k < m; k++) {
-              in_use[rd][k] = false;
+            for (int k = j + 1; k < m; k++) {
+              if (rd != -1)
+                in_use[rd][k] = false;
             }
             break;
           }
@@ -67,9 +70,9 @@ class Processor {
   void print() {
     for (int i = 0; i < (int)size(pipeline); i++) {
       int rd = instructions[i].rd, rs1 = instructions[i].rs1, rs2 = instructions[i].rs2, imm = instructions[i].imm;
-      cout << instructions[i].opcode << " " << rd << " " << rs1 << " ";
+      cout << instructions[i].opcode << " x" << rd << " x" << rs1 << " ";
       if (rs2 != -1) {
-        cout << rs2 << ";";
+        cout << "x" << rs2 << ";";
       } else {
         cout << imm << ";";
       }
