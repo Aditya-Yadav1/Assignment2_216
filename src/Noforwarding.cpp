@@ -12,7 +12,6 @@ struct Instr {
 };
 
 vector<Instr> instructions;
-// int registers[32] = {0};
 string stages[6] = {"IF", "ID", "EX", "MEM", "WB", "-"};
 
 class Processor {
@@ -24,49 +23,88 @@ class Processor {
   }
   void run() {
     int n = size(instructions), m = size(pipeline[0]);
-    vector<vector<bool>> check(m, vector<bool>(5, false));
-    vector<vector<bool>> in_use(32, vector<bool>(m, false));
-    for (int i = 0; i < n; i++) {
-      int curr_stage = 0;
-      int rd = -1, rs1 = -1, rs2 = -1;
-      for (int j = 0; j < m; j++) {
-        if (check[j][curr_stage]) {
-          if (curr_stage != 0) {
-            pipeline[i][j] = stages[5];
-          }
-          continue;
-        } else {
-          if (curr_stage == 1) {
-            if (rd == -1) {
-              pipeline[i][j] = stages[curr_stage];
-              rs1 = instructions[i].rs1, rs2 = instructions[i].rs2, rd = instructions[i].rd;
+    int registers[32] = {0};
+    vector<bool> in_use(32, false), check(5, false);
+    vector<int> curr_stage(n, -1);
+    for (int i = 0; i < m; i++) {
+      for (int j = 0; j < n; j++) {
+        switch (curr_stage[j]) {
+          case -1: {
+            if (!check[0]) {
+              check[0] = true;
+              curr_stage[j] = 0;
+              pipeline[j][i] = stages[0];
             }
-            if (in_use[rs1][j + 1] || (rs2 != -1 && in_use[rs2][j + 1])) {
-              pipeline[i][j + 1] = stages[5];  // Stall
+            break;
+          }
+          case 0: {
+            if (check[1]) {
+              pipeline[j][i] = stages[5];
             } else {
-              curr_stage++;
+              check[1] = true;
+              curr_stage[j] = 1;
+              pipeline[j][i] = stages[1];
+              check[0] = false;
             }
-            check[j][1] = true;
-            in_use[rd][min(j + 1, m - 1)] = true;
-          } else {
-            pipeline[i][j] = stages[curr_stage];
-            check[j][curr_stage] = true;
-            curr_stage++;
-            if (rd != -1)
-              in_use[rd][min(j + 1, m - 1)] = in_use[rd][j];
+            break;
           }
-          if (curr_stage > 4) {
-            for (int k = j + 1; k < m; k++) {
-              if (rd != -1)
-                in_use[rd][k] = false;
+          case 1: {
+            if (check[2] or (instructions[j].rs1 != -1 and in_use[instructions[j].rs1]) or (instructions[j].rs2 != -1 and in_use[instructions[j].rs2])) {
+              pipeline[j][i] = stages[5];
+            } else {
+              // todo if jal then set the pc to the next instruction
+              check[2] = true;
+              curr_stage[j] = 2;
+              pipeline[j][i] = stages[2];
+              if (instructions[j].rd != -1) {
+                in_use[instructions[j].rd] = true;
+              }
+              check[1] = false;
             }
+            break;
+          }
+          case 2: {
+            if (check[3]) {
+              pipeline[j][i] = stages[5];
+            } else {
+              check[3] = true;
+              curr_stage[j] = 3;
+              pipeline[j][i] = stages[3];
+              check[2] = false;
+              // compute(instructions[j]);  TODO compute but dont set the rd now that is rd is still in use only
+            }
+            break;
+          }
+          case 3: {
+            if (check[4]) {
+              pipeline[j][i] = stages[5];
+            } else {
+              check[4] = true;
+              curr_stage[j] = 4;
+              pipeline[j][i] = stages[4];
+              check[3] = false;
+              // load_memory(instructions[j]);  TODO load_memory(lw,sw) but dont set the rd now that is rd is still in use only
+            }
+            break;
+          }
+          case 4: {
+            // TODO depending on op code if branch ,then ccheck for branch taken or not if taken then set j to that instr number
+            // if not a branch operation then set the rd in the register file
+            // set(rd,value)
+            curr_stage[j] = 5;
+            check[4] = false;
+            if (instructions[j].rd != -1) {
+              in_use[instructions[j].rd] = false;
+            }
+            break;
+          }
+          default: {
             break;
           }
         }
       }
     }
   }
-
   void print() {
     for (int i = 0; i < (int)size(pipeline); i++) {
       int rd = instructions[i].rd, rs1 = instructions[i].rs1, rs2 = instructions[i].rs2, imm = instructions[i].imm;

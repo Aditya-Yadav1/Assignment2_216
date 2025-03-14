@@ -13,7 +13,7 @@ noforward: Noforwarding.cpp
 forward: Forwarding.cpp
 	$(CXX) $(CXXFLAGS) -o forward Forwarding.cpp
 test: noforward
-	./noforward ../input/tc1.txt 10
+	./noforward ../input/tc1.txt 20
 
 clean:
 	rm -f $(TARGETS)
