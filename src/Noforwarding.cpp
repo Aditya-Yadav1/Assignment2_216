@@ -26,82 +26,118 @@ class Processor {
     int registers[32] = {0};
     vector<bool> in_use(32, false), check(5, false);
     vector<int> curr_stage(n, -1);
-    for (int i = 0; i < m; i++) {
-      for (int j = 0; j < n; j++) {
-        switch (curr_stage[j]) {
+
+    int pc = 0;
+    for (int i = 0; i < m; i++) {  // iterate through cycles
+      // Don't reset check array at every cycle, only after branches/jumps
+
+      int cnt = 0;
+      while (cnt < 5 and pc + cnt < n) {
+        int curr_instr = pc + cnt;
+        bool branch_taken = false;
+        switch (curr_stage[curr_instr]) {
           case -1: {
             if (!check[0]) {
               check[0] = true;
-              curr_stage[j] = 0;
-              pipeline[j][i] = stages[0];
+              curr_stage[curr_instr] = 0;
+              pipeline[curr_instr][i] = stages[0];
             }
             break;
           }
-          case 0: {
+          case 0: {  // IF stage
             if (check[1]) {
-              pipeline[j][i] = stages[5];
+              pipeline[curr_instr][i] = stages[5];
             } else {
               check[1] = true;
-              curr_stage[j] = 1;
-              pipeline[j][i] = stages[1];
+              curr_stage[curr_instr] = 1;
+              pipeline[curr_instr][i] = stages[1];
               check[0] = false;
             }
             break;
           }
-          case 1: {
-            if (check[2] or (instructions[j].rs1 != -1 and in_use[instructions[j].rs1]) or (instructions[j].rs2 != -1 and in_use[instructions[j].rs2])) {
-              pipeline[j][i] = stages[5];
+          case 1: {  // ID stage
+            if (check[2] or (instructions[curr_instr].rs1 != -1 and in_use[instructions[curr_instr].rs1]) or
+                (instructions[curr_instr].rs2 != -1 and in_use[instructions[curr_instr].rs2])) {
+              pipeline[curr_instr][i] = stages[5];
             } else {
-              // todo if jal then set the pc to the next instruction
-              check[2] = true;
-              curr_stage[j] = 2;
-              pipeline[j][i] = stages[2];
-              if (instructions[j].rd != -1) {
-                in_use[instructions[j].rd] = true;
-              }
               check[1] = false;
+              if (instructions[curr_instr].opcode == "j" || instructions[curr_instr].opcode == "jal") {
+                pc = instructions[curr_instr].imm / 4;
+                fill(check.begin(), check.end(), false);
+                if (instructions[curr_instr].rd != -1) {
+                  registers[instructions[curr_instr].rd] = instructions[curr_instr].imm;
+                }
+                cnt = 0;
+                branch_taken = true;
+                break;
+              }
+              curr_stage[curr_instr] = 2;
+              pipeline[curr_instr][i] = stages[2];
+              if (instructions[curr_instr].rd != -1) {
+                in_use[instructions[curr_instr].rd] = true;
+              }
+              check[2] = true;
             }
             break;
           }
           case 2: {
             if (check[3]) {
-              pipeline[j][i] = stages[5];
+              pipeline[curr_instr][i] = stages[5];
             } else {
               check[3] = true;
-              curr_stage[j] = 3;
-              pipeline[j][i] = stages[3];
+              curr_stage[curr_instr] = 3;
+              pipeline[curr_instr][i] = stages[3];
               check[2] = false;
-              // compute(instructions[j]);  TODO compute but dont set the rd now that is rd is still in use only
             }
+            // compute(instructions[j]);  TODO compute but dont set the rd now that is rd is still in use only
             break;
           }
           case 3: {
             if (check[4]) {
-              pipeline[j][i] = stages[5];
+              pipeline[curr_instr][i] = stages[5];
             } else {
-              check[4] = true;
-              curr_stage[j] = 4;
-              pipeline[j][i] = stages[4];
               check[3] = false;
-              // load_memory(instructions[j]);  TODO load_memory(lw,sw) but dont set the rd now that is rd is still in use only
+              if ((instructions[curr_instr].opcode == "beq" || instructions[curr_instr].opcode == "bne")) {
+                bool condition = false;
+                if (instructions[curr_instr].opcode == "beq") {
+                  condition = (registers[instructions[curr_instr].rs1] == registers[instructions[curr_instr].rs2]);
+                } else {  // bne
+                  condition = (registers[instructions[curr_instr].rs1] != registers[instructions[curr_instr].rs2]);
+                }
+                if (condition) {
+                  pc = instructions[curr_instr].imm / 4;
+                  fill(check.begin(), check.end(), false);
+                  cnt = 0;
+                  branch_taken = true;
+                }
+              }
+              check[4] = true;
+              curr_stage[curr_instr] = 4;
+              pipeline[curr_instr][i] = stages[4];
             }
+            // load_memory(instructions[j]);  TODO load_memory(lw,sw) but dont set the rd now that is rd is still in use only
             break;
           }
           case 4: {
-            // TODO depending on op code if branch ,then ccheck for branch taken or not if taken then set j to that instr number
-            // if not a branch operation then set the rd in the register file
-            // set(rd,value)
-            curr_stage[j] = 5;
+            curr_stage[curr_instr] = 5;
             check[4] = false;
-            if (instructions[j].rd != -1) {
-              in_use[instructions[j].rd] = false;
+            if (instructions[curr_instr].rd != -1) {
+              in_use[instructions[curr_instr].rd] = false;
             }
             break;
           }
-          default: {
+          default:
             break;
-          }
         }
+
+        if (branch_taken) {
+          break;
+        }
+
+        cnt++;
+      }
+      if (curr_stage[pc] == 5) {
+        pc++;
       }
     }
   }
@@ -135,21 +171,44 @@ void load_instructions(string filename) {
     istringstream ass_stream(assembly);
     ass_stream >> instr.opcode;
 
+    string rd_str, rs1_str, rs2_str;
+    int imm;
     if (instr.opcode == "addi") {
-      string rd_str, rs1_str;
-      int imm;
       ass_stream >> rd_str >> rs1_str >> imm;
       instr.rd = stoi(rd_str.substr(1));
       instr.rs1 = stoi(rs1_str.substr(1));
       instr.imm = imm;
       instr.rs2 = -1;
     } else if (instr.opcode == "add") {
-      string rd_str, rs1_str, rs2_str;
       ass_stream >> rd_str >> rs1_str >> rs2_str;
       instr.rd = stoi(rd_str.substr(1));
       instr.rs1 = stoi(rs1_str.substr(1));
       instr.rs2 = stoi(rs2_str.substr(1));
       instr.imm = 0;
+    } else if (instr.opcode == "j") {
+      ass_stream >> imm;
+      instr.rd = -1;
+      instr.rs1 = -1;
+      instr.rs2 = -1;
+      instr.imm = imm;
+    } else if (instr.opcode == "jal") {
+      ass_stream >> rd_str >> imm;
+      instr.rd = stoi(rd_str.substr(1));
+      instr.rs1 = -1;
+      instr.rs2 = -1;
+      instr.imm = imm;
+    } else if (instr.opcode == "jalr") {
+      ass_stream >> rd_str >> rs1_str >> imm;
+      instr.rd = stoi(rd_str.substr(1));
+      instr.rs1 = stoi(rs1_str.substr(1));
+      instr.rs2 = -1;
+      instr.imm = imm;
+    } else if (instr.opcode == "beq" || instr.opcode == "bne") {
+      ass_stream >> rs1_str >> rs2_str >> imm;
+      instr.rd = -1;
+      instr.rs1 = stoi(rs1_str.substr(1));
+      instr.rs2 = stoi(rs2_str.substr(1));
+      instr.imm = imm;
     }
     instructions.push_back(instr);
   }
