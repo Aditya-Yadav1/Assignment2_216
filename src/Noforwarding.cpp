@@ -2,15 +2,14 @@
 using namespace std;
 
 struct Instr {
-  string machineCode;
-  string opcode;
-  int rs1;
-  int rs2;
-  int rd;
+  uint32_t machineCode;  // The 32-bit instruction in hex
+  string opcode;         // e.g. "addi", "add", "beq", "jal", "lb"
+  int rd, rs1, rs2;
   int imm;
 };
 
-vector<Instr> instructions;
+vector<Instr>
+    instructions;
 string stages[6] = {"IF", "ID", "EX", "MEM", "WB", "-"};
 
 class Processor {
@@ -255,70 +254,114 @@ class Processor {
   };
 };
 
+int32_t signExtend(int32_t val, int fromBits) {
+  int32_t mask = 1 << (fromBits - 1);
+  if (val & mask) {
+    val |= ~((1 << fromBits) - 1);
+  }
+  return val;
+}
+
+void decodeInstruction(Instr& instr) {
+  uint32_t code = instr.machineCode;
+
+  // Common fields:
+  //   opcode = bits [6:0]
+  //   rd     = bits [11:7]
+  //   funct3 = bits [14:12]
+  //   rs1    = bits [19:15]
+  //   rs2    = bits [24:20]
+  //   funct7 = bits [31:25]
+  uint32_t opcode = code & 0x7F;          // bits [6:0]
+  uint32_t rd = (code >> 7) & 0x1F;       // bits [11:7]
+  uint32_t funct3 = (code >> 12) & 0x07;  // bits [14:12]
+  uint32_t rs1 = (code >> 15) & 0x1F;     // bits [19:15]
+  uint32_t rs2 = (code >> 20) & 0x1F;     // bits [24:20]
+  uint32_t funct7 = (code >> 25) & 0x7F;  // bits [31:25]
+
+  instr.rd = rd;
+  instr.rs1 = rs1;
+  instr.rs2 = rs2;
+  instr.imm = 0;
+  instr.opcode.clear();
+
+  switch (opcode) {
+    // R-type: ADD
+    case 0x33:
+      if (funct3 == 0 && funct7 == 0x00) {
+        instr.opcode = "add";
+      }
+      break;
+
+    // I-type: ADDI
+    case 0x13:
+      if (funct3 == 0) {
+        instr.opcode = "addi";
+        // Immediate is bits [31:20]
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
+
+    // I-type: JALR
+    case 0x67:
+      if (funct3 == 0) {
+        instr.opcode = "jalr";
+        // Immediate from bits [31:20]
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
+
+    // I-type: Loads (LB)
+    case 0x03:
+      if (funct3 == 0) {  // lb
+        instr.opcode = "lb";
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
+
+    // B-type: BEQ
+    case 0x63:
+      if (funct3 == 0) {  // beq
+        instr.opcode = "beq";
+        int32_t imm = 0;
+        imm |= ((code >> 7) & 0x1) << 11;   // bit 11
+        imm |= ((code >> 8) & 0xF) << 1;    // bits [4:1]
+        imm |= ((code >> 25) & 0x3F) << 5;  // bits [10:5]
+        imm |= ((code >> 31) & 0x1) << 12;  // bit 12
+        // Sign-extend from 13 bits.
+        imm = signExtend(imm, 13);
+        instr.imm = imm;
+      }
+      break;
+
+    // J-type: JAL
+    case 0x6F: {
+      instr.opcode = "jal";
+      int32_t imm = 0;
+      imm |= ((code >> 21) & 0x3FF) << 1;  // bits [10:1]
+      imm |= ((code >> 20) & 0x1) << 11;   // bit [11]
+      imm |= ((code >> 12) & 0xFF) << 12;  // bits [19:12]
+      imm |= ((code >> 31) & 0x1) << 20;   // bit [20]
+      imm = signExtend(imm, 21);
+      // Do not shift left by 1 if the machine code already contains the byte offset.
+      instr.imm = imm;
+    } break;
+
+    default:
+      instr.opcode = "unknown";
+      break;
+  }
+}
 void load_instructions(string filename) {
   ifstream file(filename);
   string line;
   while (getline(file, line)) {
-    istringstream iss(line);
     Instr instr;
-    iss >> instr.machineCode;
-    string assembly;
-    getline(iss >> ws, assembly);
-
-    istringstream ass_stream(assembly);
-    ass_stream >> instr.opcode;
-
-    string rd_str, rs1_str, rs2_str;
-    int imm;
-    if (instr.opcode == "addi") {
-      ass_stream >> rd_str >> rs1_str >> imm;
-      instr.rd = stoi(rd_str.substr(1));
-      instr.rs1 = stoi(rs1_str.substr(1));
-      instr.imm = imm;
-      instr.rs2 = -1;
-    } else if (instr.opcode == "add") {
-      ass_stream >> rd_str >> rs1_str >> rs2_str;
-      instr.rd = stoi(rd_str.substr(1));
-      instr.rs1 = stoi(rs1_str.substr(1));
-      instr.rs2 = stoi(rs2_str.substr(1));
-      instr.imm = 0;
-    } else if (instr.opcode == "j") {
-      ass_stream >> imm;
-      instr.rd = -1;
-      instr.rs1 = -1;
-      instr.rs2 = -1;
-      instr.imm = imm;
-    } else if (instr.opcode == "jal") {
-      ass_stream >> rd_str >> imm;
-      instr.rd = stoi(rd_str.substr(1));
-      instr.rs1 = -1;
-      instr.rs2 = -1;
-      instr.imm = imm;
-    } else if (instr.opcode == "jalr") {
-      ass_stream >> rd_str >> rs1_str >> imm;
-      instr.rd = stoi(rd_str.substr(1));
-      instr.rs1 = stoi(rs1_str.substr(1));
-      instr.rs2 = -1;
-      instr.imm = imm;
-    } else if (instr.opcode == "beq" or instr.opcode == "bne") {
-      ass_stream >> rs1_str >> rs2_str >> imm;
-      instr.rd = -1;
-      instr.rs1 = stoi(rs1_str.substr(1));
-      instr.rs2 = stoi(rs2_str.substr(1));
-      instr.imm = imm;
-    } else if (instr.opcode == "lw" or instr.opcode == "lb") {
-      ass_stream >> rd_str >> imm >> rs1_str;
-      instr.rd = stoi(rd_str.substr(1));
-      instr.rs1 = stoi(rs1_str.substr(1));
-      instr.rs2 = -1;
-      instr.imm = imm;
-    } else if (instr.opcode == "sw" or instr.opcode == "sb") {
-      ass_stream >> rs2_str >> imm >> rs1_str;
-      instr.rd = -1;
-      instr.rs1 = stoi(rs1_str.substr(1));
-      instr.rs2 = stoi(rs2_str.substr(1));
-      instr.imm = imm;
+    {
+      istringstream iss(line);
+      iss >> hex >> instr.machineCode;
     }
+    decodeInstruction(instr);
     instructions.push_back(instr);
   }
 }

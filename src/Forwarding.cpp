@@ -2,11 +2,9 @@
 using namespace std;
 
 struct Instr {
-  uint32_t machineCode;
-  string opcode;
-  int rs1;
-  int rs2;
-  int rd;
+  uint32_t machineCode;  // The 32-bit instruction in hex
+  string opcode;         // e.g. "addi", "add", "beq", "jal", "lb"
+  int rd, rs1, rs2;
   int imm;
 };
 
@@ -270,140 +268,117 @@ class Processor {
   };
 };
 
-uint32_t extractBits(uint32_t value, int start, int length) {
-    return (value >> start) & ((1 << length) - 1);
+int32_t signExtend(int32_t val, int fromBits) {
+  int32_t mask = 1 << (fromBits - 1);
+  if (val & mask) {
+    val |= ~((1 << fromBits) - 1);
+  }
+  return val;
 }
 
-void decodeInstruction(Instr &instr) {
-    uint32_t opcode = extractBits(instr.machineCode, 0, 7);
-    uint32_t funct3 = extractBits(instr.machineCode, 12, 3);
-    uint32_t funct7 = extractBits(instr.machineCode, 25, 7);
-    
-    instr.rd = extractBits(instr.machineCode, 7, 5);
-    instr.rs1 = extractBits(instr.machineCode, 15, 5);
-    instr.rs2 = extractBits(instr.machineCode, 20, 5);
-    instr.imm = 0;
+void decodeInstruction(Instr& instr) {
+  uint32_t code = instr.machineCode;
 
-    if (opcode == 0x33) { // R-type (e.g., add, sub)
-        if (funct3 == 0) {
-            instr.opcode = (funct7 == 0x00) ? "add" : "sub";
-        }
-    } else if (opcode == 0x13) { // I-type (e.g., addi)
-        if (funct3 == 0) {
-            instr.opcode = "addi";
-            instr.imm = extractBits(instr.machineCode, 20, 12);
-        }
-    } else if (opcode == 0x03) { // Load (e.g., lw, lb)
-        instr.imm = extractBits(instr.machineCode, 20, 12);
-        if (funct3 == 0x2) instr.opcode = "lw";
-        else if (funct3 == 0x0) instr.opcode = "lb";
-    } else if (opcode == 0x23) { // Store (e.g., sw, sb)
-        int imm1 = extractBits(instr.machineCode, 7, 5);
-        int imm2 = extractBits(instr.machineCode, 25, 7);
-        instr.imm = (imm2 << 5) | imm1;
-        if (funct3 == 0x2) instr.opcode = "sw";
-        else if (funct3 == 0x0) instr.opcode = "sb";
-    } else if (opcode == 0x63) { // B-type (e.g., beq, bne)
-        int imm1 = extractBits(instr.machineCode, 8, 4);
-        int imm2 = extractBits(instr.machineCode, 25, 6);
-        int imm3 = extractBits(instr.machineCode, 7, 1);
-        int imm4 = extractBits(instr.machineCode, 31, 1);
-        instr.imm = (imm4 << 12) | (imm3 << 11) | (imm2 << 5) | (imm1 << 1);
-        if (funct3 == 0x0) instr.opcode = "beq";
-        else if (funct3 == 0x1) instr.opcode = "bne";
-    } else if (opcode == 0x6F) { // J-type (e.g., jal)
-        int imm1 = extractBits(instr.machineCode, 21, 10);
-        int imm2 = extractBits(instr.machineCode, 20, 1);
-        int imm3 = extractBits(instr.machineCode, 12, 8);
-        int imm4 = extractBits(instr.machineCode, 31, 1);
-        instr.imm = (imm4 << 20) | (imm1 << 1) | (imm2 << 11) | (imm3 << 12);
-        instr.opcode = "jal";
-    } else if (opcode == 0x67) { // jalr
+  // Common fields:
+  //   opcode = bits [6:0]
+  //   rd     = bits [11:7]
+  //   funct3 = bits [14:12]
+  //   rs1    = bits [19:15]
+  //   rs2    = bits [24:20]
+  //   funct7 = bits [31:25]
+  uint32_t opcode = code & 0x7F;          // bits [6:0]
+  uint32_t rd = (code >> 7) & 0x1F;       // bits [11:7]
+  uint32_t funct3 = (code >> 12) & 0x07;  // bits [14:12]
+  uint32_t rs1 = (code >> 15) & 0x1F;     // bits [19:15]
+  uint32_t rs2 = (code >> 20) & 0x1F;     // bits [24:20]
+  uint32_t funct7 = (code >> 25) & 0x7F;  // bits [31:25]
+
+  instr.rd = rd;
+  instr.rs1 = rs1;
+  instr.rs2 = rs2;
+  instr.imm = 0;
+  instr.opcode.clear();
+
+  switch (opcode) {
+    // R-type: ADD
+    case 0x33:
+      if (funct3 == 0 && funct7 == 0x00) {
+        instr.opcode = "add";
+      }
+      break;
+
+    // I-type: ADDI
+    case 0x13:
+      if (funct3 == 0) {
+        instr.opcode = "addi";
+        // Immediate is bits [31:20]
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
+
+    // I-type: JALR
+    case 0x67:
+      if (funct3 == 0) {
         instr.opcode = "jalr";
-        instr.imm = extractBits(instr.machineCode, 20, 12);
-    }
-}
+        // Immediate from bits [31:20]
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
 
+    // I-type: Loads (LB)
+    case 0x03:
+      if (funct3 == 0) {  // lb
+        instr.opcode = "lb";
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
+
+    // B-type: BEQ
+    case 0x63:
+      if (funct3 == 0) {  // beq
+        instr.opcode = "beq";
+        int32_t imm = 0;
+        imm |= ((code >> 7) & 0x1) << 11;   // bit 11
+        imm |= ((code >> 8) & 0xF) << 1;    // bits [4:1]
+        imm |= ((code >> 25) & 0x3F) << 5;  // bits [10:5]
+        imm |= ((code >> 31) & 0x1) << 12;  // bit 12
+        // Sign-extend from 13 bits.
+        imm = signExtend(imm, 13);
+        instr.imm = imm;
+      }
+      break;
+
+    // J-type: JAL
+    case 0x6F: {
+      instr.opcode = "jal";
+      int32_t imm = 0;
+      imm |= ((code >> 21) & 0x3FF) << 1;  // bits [10:1]
+      imm |= ((code >> 20) & 0x1) << 11;   // bit [11]
+      imm |= ((code >> 12) & 0xFF) << 12;  // bits [19:12]
+      imm |= ((code >> 31) & 0x1) << 20;   // bit [20]
+      imm = signExtend(imm, 21);
+      // Do not shift left by 1 if the machine code already contains the byte offset.
+      instr.imm = imm;
+    } break;
+
+    default:
+      instr.opcode = "unknown";
+      break;
+  }
+}
 void load_instructions(string filename) {
-    ifstream file(filename);
-    string line;
-    while (getline(file, line)) {
-        istringstream iss(line);
-        Instr instr;
-        iss >> hex >> instr.machineCode; // Read machine code in hex format
-
-        decodeInstruction(instr);
-        instructions.push_back(instr);
+  ifstream file(filename);
+  string line;
+  while (getline(file, line)) {
+    Instr instr;
+    {
+      istringstream iss(line);
+      iss >> hex >> instr.machineCode;
     }
+    decodeInstruction(instr);
+    instructions.push_back(instr);
+  }
 }
-
-// void load_instructions(string filename) {
-//   ifstream file(filename);
-//   string line;
-//   while (getline(file, line)) {
-//     istringstream iss(line);
-//     Instr instr;
-//     iss >> instr.machineCode;
-//     string assembly;
-//     getline(iss >> ws, assembly);
-
-//     istringstream ass_stream(assembly);
-//     ass_stream >> instr.opcode;
-
-//     string rd_str, rs1_str, rs2_str;
-//     int imm;
-//     if (instr.opcode == "addi") {
-//       ass_stream >> rd_str >> rs1_str >> imm;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.imm = imm;
-//       instr.rs2 = -1;
-//     } else if (instr.opcode == "add") {
-//       ass_stream >> rd_str >> rs1_str >> rs2_str;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = stoi(rs2_str.substr(1));
-//       instr.imm = 0;
-//     } else if (instr.opcode == "j") {
-//       ass_stream >> imm;
-//       instr.rd = -1;
-//       instr.rs1 = -1;
-//       instr.rs2 = -1;
-//       instr.imm = imm;
-//     } else if (instr.opcode == "jal") {
-//       ass_stream >> rd_str >> imm;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = -1;
-//       instr.rs2 = -1;
-//       instr.imm = imm;
-//     } else if (instr.opcode == "jalr") {
-//       ass_stream >> rd_str >> rs1_str >> imm;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = -1;
-//       instr.imm = imm;
-//     } else if (instr.opcode == "beq" or instr.opcode == "bne") {
-//       ass_stream >> rs1_str >> rs2_str >> imm;
-//       instr.rd = -1;
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = stoi(rs2_str.substr(1));
-//       instr.imm = imm;
-//     } else if (instr.opcode == "lw" or instr.opcode == "lb") {
-//       ass_stream >> rd_str >> imm >> rs1_str;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = -1;
-//       instr.imm = imm;
-//     } else if (instr.opcode == "sw" or instr.opcode == "sb") {
-//       ass_stream >> rs2_str >> imm >> rs1_str;
-//       instr.rd = -1;
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = stoi(rs2_str.substr(1));
-//       instr.imm = imm;
-//     }
-//     instructions.push_back(instr);
-//   }
-// }
 
 int main(int argc, char* argv[]) {
   if (argc != 3) {
