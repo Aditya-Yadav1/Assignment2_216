@@ -50,6 +50,11 @@ public:
           break;
         }
         case 0: { // IF stage
+          if (branch_taken != -1) {
+            check[0] = false;
+            curr_stage[curr_instr] = -1;
+            break;
+          }
           if (check[1]) {
             pipeline[curr_instr][i] = stages[5];
           } else {
@@ -65,6 +70,11 @@ public:
           break;
         }
         case 1: { // ID stage
+          if (branch_taken != -1) {
+            check[1] = false;
+            curr_stage[curr_instr] = -1;
+            break;
+          }
           if (check[2] or
               (instructions[curr_instr].rs1 != -1 and
                in_use[instructions[curr_instr].rs1]) or
@@ -146,6 +156,7 @@ public:
                     }
                   }
                   branch_taken = j;
+                  in_use[instructions[curr_instr].rd] = false;
                   break;
                 }
               }
@@ -160,6 +171,12 @@ public:
               }
             } else {
               curr_stage[curr_instr] = -1;
+            }
+            if (instructions[curr_instr].opcode != "lw" and
+                instructions[curr_instr].opcode != "lb") {
+              if (instructions[curr_instr].rd != -1) {
+                in_use[instructions[curr_instr].rd] = false;
+              }
             }
           }
           break;
@@ -179,6 +196,7 @@ public:
             if (instructions[curr_instr].opcode == "lw") {
               registers[instructions[curr_instr].rd] =
                   memory[effective_address / 4];
+              in_use[instructions[curr_instr].rd] = false;
             } else if (instructions[curr_instr].opcode == "lb") {
               int word = memory[effective_address / 4];
               int byte_offset = effective_address % 4;
@@ -189,6 +207,7 @@ public:
               } else {
                 registers[instructions[curr_instr].rd] = loaded_byte;
               }
+              in_use[instructions[curr_instr].rd] = false;
             } else if (instructions[curr_instr].opcode == "sw" or
                        instructions[curr_instr].opcode == "sb") {
               if (instructions[curr_instr].opcode == "sw") {
@@ -214,6 +233,7 @@ public:
       if (branch_taken != -1) {
         for (int k = branch_taken + 1; k < 5; k++) {
           if (instr[k] != -1) {
+            check[curr_stage[instr[k]]] = false;
             curr_stage[instr[k]] = -1;
           }
         }
@@ -344,74 +364,6 @@ void load_instructions(string filename) {
     instructions.push_back(instr);
   }
 }
-
-// void load_instructions(string filename) {
-//   ifstream file(filename);
-//   string line;
-//   while (getline(file, line)) {
-//     istringstream iss(line);
-//     Instr instr;
-//     iss >> instr.machineCode;
-//     string assembly;
-//     getline(iss >> ws, assembly);
-
-//     istringstream ass_stream(assembly);
-//     ass_stream >> instr.opcode;
-
-//     string rd_str, rs1_str, rs2_str;
-//     int imm;
-//     if (instr.opcode == "addi") {
-//       ass_stream >> rd_str >> rs1_str >> imm;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.imm = imm;
-//       instr.rs2 = -1;
-//     } else if (instr.opcode == "add") {
-//       ass_stream >> rd_str >> rs1_str >> rs2_str;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = stoi(rs2_str.substr(1));
-//       instr.imm = 0;
-//     } else if (instr.opcode == "j") {
-//       ass_stream >> imm;
-//       instr.rd = -1;
-//       instr.rs1 = -1;
-//       instr.rs2 = -1;
-//       instr.imm = imm;
-//     } else if (instr.opcode == "jal") {
-//       ass_stream >> rd_str >> imm;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = -1;
-//       instr.rs2 = -1;
-//       instr.imm = imm;
-//     } else if (instr.opcode == "jalr") {
-//       ass_stream >> rd_str >> rs1_str >> imm;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = -1;
-//       instr.imm = imm;
-//     } else if (instr.opcode == "beq" or instr.opcode == "bne") {
-//       ass_stream >> rs1_str >> rs2_str >> imm;
-//       instr.rd = -1;
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = stoi(rs2_str.substr(1));
-//       instr.imm = imm;
-//     } else if (instr.opcode == "lw" or instr.opcode == "lb") {
-//       ass_stream >> rd_str >> imm >> rs1_str;
-//       instr.rd = stoi(rd_str.substr(1));
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = -1;
-//       instr.imm = imm;
-//     } else if (instr.opcode == "sw" or instr.opcode == "sb") {
-//       ass_stream >> rs2_str >> imm >> rs1_str;
-//       instr.rd = -1;
-//       instr.rs1 = stoi(rs1_str.substr(1));
-//       instr.rs2 = stoi(rs2_str.substr(1));
-//       instr.imm = imm;
-//     }
-//     instructions.push_back(instr);
-//   }
-// }
 
 int main(int argc, char *argv[]) {
   if (argc != 3) {
