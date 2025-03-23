@@ -3,7 +3,6 @@ using namespace std;
 
 struct Instr {
   string machineCode;
-
   string opcode;
   int rs1;
   int rs2;
@@ -17,14 +16,14 @@ string stages[6] = {"IF", "ID", "EX", "MEM", "WB", "-"};
 class Processor {
   vector<vector<string>> pipeline;
 
- public:
+public:
   Processor(int total_inst, int cycle_count) {
     pipeline.resize(total_inst, vector<string>(cycle_count, " "));
   }
 
   void run() {
     int n = size(instructions), m = size(pipeline[0]);
-    int registers[32] = {0};
+    int registers[32][32] = {0};
     vector<bool> in_use(32, false), check(5, false);
     vector<int> curr_stage(n, -1);
     vector<int> instr(5, -1);
@@ -41,126 +40,154 @@ class Processor {
         }
         int curr_instr = instr[j];
         switch (curr_stage[curr_instr]) {
-          case -1: {
-            if (!check[0]) {
-              check[0] = true;
-              curr_stage[curr_instr] = 0;
-              pipeline[curr_instr][i] = stages[0];
-            }
-            break;
+        case -1: {
+          if (!check[0]) {
+            check[0] = true;
+            curr_stage[curr_instr] = 0;
+            pipeline[curr_instr][i] = stages[0];
           }
-          case 0: {  // IF stage
-            if (check[1]) {
-              pipeline[curr_instr][i] = stages[5];
+          break;
+        }
+        case 0: { // IF stage
+          if (check[1]) {
+            pipeline[curr_instr][i] = stages[5];
+          } else {
+            check[0] = false;
+            if (branch_taken == -1) {
+              check[1] = true;
+              curr_stage[curr_instr] = 1;
+              pipeline[curr_instr][i] = stages[1];
             } else {
-              check[0] = false;
-              if (branch_taken == -1) {
-                check[1] = true;
-                curr_stage[curr_instr] = 1;
-                pipeline[curr_instr][i] = stages[1];
-              } else {
-                curr_stage[curr_instr] = -1;
-              }
+              curr_stage[curr_instr] = -1;
             }
-            break;
           }
-          case 1: {  // ID stage
-            if (check[2] or (instructions[curr_instr].rs1 != -1 and in_use[instructions[curr_instr].rs1]) or
-                (instructions[curr_instr].rs2 != -1 and in_use[instructions[curr_instr].rs2])) {
-              pipeline[curr_instr][i] = stages[5];
-            } else {
-              check[1] = false;
-              if (branch_taken == -1) {
-                if (instructions[curr_instr].opcode == "j" or instructions[curr_instr].opcode == "jal") {
-                  if (instructions[curr_instr].opcode == "jal" and instructions[curr_instr].rd != -1) {
-                    registers[instructions[curr_instr].rd] = curr_instr + instructions[curr_instr].imm / 4;
+          break;
+        }
+        case 1: { // ID stage
+          if (check[2] or
+              (instructions[curr_instr].rs1 != -1 and
+               in_use[instructions[curr_instr].rs1]) or
+              (instructions[curr_instr].rs2 != -1 and
+               in_use[instructions[curr_instr].rs2])) {
+            pipeline[curr_instr][i] = stages[5];
+          } else {
+            check[1] = false;
+            if (branch_taken == -1) {
+              if (instructions[curr_instr].opcode == "j") {
+                curr_instr += instructions[curr_instr].imm / 4;
+                curr_instr = min(n - 1, curr_instr);
+                curr_instr = max(0, curr_instr);
+                for (int k = 0; k + j + 1 < 5; k++) {
+                  if (k + curr_instr < n) {
+                    new_instr1[k + 1 + j] = curr_instr + k;
+                  } else {
+                    new_instr1[k + 1 + j] = -1;
                   }
-                  curr_instr += instructions[curr_instr].imm / 4;
+                }
+                branch_taken = j;
+                break;
+              }
+              check[2] = true, curr_stage[curr_instr] = 2,
+              pipeline[curr_instr][i] = stages[2];
+              if (instructions[curr_instr].rd != -1) {
+                in_use[instructions[curr_instr].rd] = true;
+              }
+            } else {
+              curr_stage[curr_instr] = -1;
+            }
+          }
+          break;
+        }
+        case 2: { // EX stage
+          if (check[3]) {
+            pipeline[curr_instr][i] = stages[5];
+          } else {
+            check[2] = false;
+            if (branch_taken == -1) {
+              check[3] = true;
+              curr_stage[curr_instr] = 3;
+              pipeline[curr_instr][i] = stages[3];
+              if (instructions[curr_instr].opcode == "beq" or
+                  instructions[curr_instr].opcode == "bne" or
+                  instructions[curr_instr].opcode == "jalr" or
+                  instructions[curr_instr].opcode == "jal") {
+                bool condition = false;
+                if (instructions[curr_instr].opcode == "beq") {
+                  condition = (registers[instructions[curr_instr].rs1][0] ==
+                               registers[instructions[curr_instr].rs2][0]);
+                } else if (instructions[curr_instr].opcode == "bne") {
+                  condition = (registers[instructions[curr_instr].rs1][0] !=
+                               registers[instructions[curr_instr].rs2][0]);
+                } else if (instructions[curr_instr].opcode == "jalr" or
+                           instructions[curr_instr].opcode == "jal") {
+                  condition = true;
+                }
+                if (condition) {
+                  if (instructions[curr_instr].opcode == "jalr") {
+                    curr_instr = registers[instructions[curr_instr].rs1][0] +
+                                 instructions[curr_instr].imm;
+                    registers[instructions[curr_instr].rd][0] = curr_instr;
+                  } else if (instructions[curr_instr].opcode == "jal") {
+                    registers[instructions[curr_instr].rd][0] =
+                        curr_instr + instructions[curr_instr].imm / 4;
+                    curr_instr += instructions[curr_instr].imm / 4;
+                  } else {
+                    curr_instr += instructions[curr_instr].imm / 4;
+                  }
                   curr_instr = min(n - 1, curr_instr);
                   curr_instr = max(0, curr_instr);
-                  for (int k = 0; k < 5; k++) {
+                  for (int k = 0; k + j + 1 < 5; k++) {
                     if (k + curr_instr < n) {
-                      instr[k] = curr_instr + k;
+                      new_instr1[k + 1 + j] = curr_instr + k;
                     } else {
-                      instr[k] = -1;
+                      new_instr1[k + 1 + j] = -1;
                     }
-                    check[k] = false;
                   }
-                  branch_taken = 5;
+                  branch_taken = j;
                   break;
                 }
-                check[2] = true, curr_stage[curr_instr] = 2, pipeline[curr_instr][i] = stages[2];
-                if (instructions[curr_instr].rd != -1) {
-                  in_use[instructions[curr_instr].rd] = true;
-                }
-              } else {
-                curr_stage[curr_instr] = -1;
               }
-            }
-            break;
-          }
-          case 2: {  // EX stage
-            if (check[3]) {
-              pipeline[curr_instr][i] = stages[5];
-            } else {
-              check[2] = false;
-              if (branch_taken == -1) {
-                check[3] = true;
-                curr_stage[curr_instr] = 3;
-                pipeline[curr_instr][i] = stages[3];
-                if (instructions[curr_instr].opcode == "beq" or instructions[curr_instr].opcode == "bne") {
-                  bool condition = false;
-                  if (instructions[curr_instr].opcode == "beq") {
-                    condition = (registers[instructions[curr_instr].rs1] == registers[instructions[curr_instr].rs2]);
-                  } else {
-                    condition = (registers[instructions[curr_instr].rs1] != registers[instructions[curr_instr].rs2]);
-                  }
-                  if (condition) {
-                    curr_instr += instructions[curr_instr].imm / 4;
-                    curr_instr = min(n - 1, curr_instr);
-                    curr_instr = max(0, curr_instr);
-                    for (int k = 0; k + j + 1 < 5; k++) {
-                      if (k + curr_instr < n) {
-                        new_instr1[k + 1 + j] = curr_instr + k;
-                      } else {
-                        new_instr1[k + 1 + j] = -1;
-                      }
-                    }
-                    branch_taken = j;
-                    break;
-                  }
-                }
 
-                if (instructions[curr_instr].opcode == "addi") {
-                  registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm;
-                } else if (instructions[curr_instr].opcode == "add") {
-                  registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + registers[instructions[curr_instr].rs2];
-                }
-              } else {
-                curr_stage[curr_instr] = -1;
+              if (instructions[curr_instr].opcode == "addi") {
+                registers[instructions[curr_instr].rd][0] =
+                    registers[instructions[curr_instr].rs1][0] +
+                    instructions[curr_instr].imm;
+              } else if (instructions[curr_instr].opcode == "add") {
+                registers[instructions[curr_instr].rd][0] =
+                    registers[instructions[curr_instr].rs1][0] +
+                    registers[instructions[curr_instr].rs2][0];
               }
-            }
-            break;
-          }
-          case 3: {  // MEM stage
-            if (check[4]) {
-              pipeline[curr_instr][i] = stages[5];
             } else {
-              check[3] = false;
-              check[4] = true;
-              wb = true;
-              curr_stage[curr_instr] = 4;
-              pipeline[curr_instr][i] = stages[4];
-              if (instructions[curr_instr].opcode == "lw" or instructions[curr_instr].opcode == "lb") {
-                registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm;
-              } else if (instructions[curr_instr].opcode == "sw" or instructions[curr_instr].opcode == "sb") {
-                // Simplified memory store
-              }
+              curr_stage[curr_instr] = -1;
             }
-            break;
           }
-          default:
-            break;
+          break;
+        }
+        case 3: { // MEM stage
+          if (check[4]) {
+            pipeline[curr_instr][i] = stages[5];
+          } else {
+            check[3] = false;
+            check[4] = true;
+            wb = true;
+            curr_stage[curr_instr] = 4;
+            pipeline[curr_instr][i] = stages[4];
+            if (instructions[curr_instr].opcode == "lw" or
+                instructions[curr_instr].opcode == "lb") {
+              registers[instructions[curr_instr].rd][0] =
+                  registers[instructions[curr_instr].rs1]
+                           [instructions[curr_instr].imm / 4];
+            } else if (instructions[curr_instr].opcode == "sw" or
+                       instructions[curr_instr].opcode == "sb") {
+              registers[instructions[curr_instr].rs1]
+                       [instructions[curr_instr].imm / 4] =
+                           registers[instructions[curr_instr].rs2][0];
+            }
+          }
+          break;
+        }
+        default:
+          break;
         }
       }
       if (branch_taken != -1) {
@@ -200,7 +227,8 @@ class Processor {
 
   void print() {
     for (int i = 0; i < (int)size(pipeline); i++) {
-      int rd = instructions[i].rd, rs1 = instructions[i].rs1, rs2 = instructions[i].rs2, imm = instructions[i].imm;
+      int rd = instructions[i].rd, rs1 = instructions[i].rs1,
+          rs2 = instructions[i].rs2, imm = instructions[i].imm;
       cout << instructions[i].opcode << " ";
       if (instructions[i].opcode == "beq" || instructions[i].opcode == "bne") {
         cout << "x" << rs1 << " x" << rs2 << " " << imm;
@@ -282,12 +310,18 @@ void load_instructions(string filename) {
       instr.rs1 = stoi(rs1_str.substr(1));
       instr.rs2 = -1;
       instr.imm = imm;
+    } else if (instr.opcode == "sw" or instr.opcode == "sb") {
+      ass_stream >> rs2_str >> imm >> rs1_str;
+      instr.rd = -1;
+      instr.rs1 = stoi(rs1_str.substr(1));
+      instr.rs2 = stoi(rs2_str.substr(1));
+      instr.imm = imm;
     }
     instructions.push_back(instr);
   }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   if (argc != 3) {
     cout << "Usage: " << argv[0] << " <input> <cycle_count>" << endl;
     return 1;

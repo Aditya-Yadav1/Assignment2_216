@@ -1,19 +1,19 @@
-# Makefile for RISC-V Processor Simulator
-
 CXX = g++
 CXXFLAGS = -g -Wall -O3
 
-TARGETS = noforward
+TARGETS = nf f
 
 all: $(TARGETS)
 
-noforward: Noforwarding.cpp 
-	$(CXX) $(CXXFLAGS) -o noforward Noforwarding.cpp
+nf: Noforwarding.cpp 
+	$(CXX) $(CXXFLAGS) -o nf Noforwarding.cpp
+f: Forwarding.cpp
+	$(CXX) $(CXXFLAGS) -o f Forwarding.cpp
 
-forward: Forwarding.cpp
-	$(CXX) $(CXXFLAGS) -o forward Forwarding.cpp
-test: noforward
-	./noforward ../input/tc1.txt 20
+noforward: nf
+	./nf ../input/tc1.txt 20
+forward: f
+	./f ../input/tc1.txt 20
 
 clean:
 	rm -f $(TARGETS)
