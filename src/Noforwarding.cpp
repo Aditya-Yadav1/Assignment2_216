@@ -128,13 +128,16 @@ public:
                 if (condition) {
                   if (instructions[curr_instr].opcode == "jalr") {
                     curr_instr = (registers[instructions[curr_instr].rs1] +
-                                  instructions[curr_instr].imm) & ~1;
-                                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = curr_instr;}
+                                  instructions[curr_instr].imm) &
+                                 ~1;
+                    if (instructions[curr_instr].rd != 0) {
+                      registers[instructions[curr_instr].rd] = curr_instr;
+                    }
                   } else if (instructions[curr_instr].opcode == "jal") {
-                    if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] =
-                        curr_instr + instructions[curr_instr].imm / 4;}
+                    if (instructions[curr_instr].rd != 0) {
+                      registers[instructions[curr_instr].rd] =
+                          curr_instr + instructions[curr_instr].imm / 4;
+                    }
                     curr_instr += instructions[curr_instr].imm / 4;
                   } else {
                     curr_instr += instructions[curr_instr].imm / 4;
@@ -153,15 +156,17 @@ public:
                 }
               }
               if (instructions[curr_instr].opcode == "addi") {
-                if (instructions[curr_instr].rd != 0){
-                registers[instructions[curr_instr].rd] =
-                    registers[instructions[curr_instr].rs1] +
-                    instructions[curr_instr].imm;}
+                if (instructions[curr_instr].rd != 0) {
+                  registers[instructions[curr_instr].rd] =
+                      registers[instructions[curr_instr].rs1] +
+                      instructions[curr_instr].imm;
+                }
               } else if (instructions[curr_instr].opcode == "add") {
-                if (instructions[curr_instr].rd != 0){
-                registers[instructions[curr_instr].rd] =
-                    registers[instructions[curr_instr].rs1] +
-                    registers[instructions[curr_instr].rs2];}
+                if (instructions[curr_instr].rd != 0) {
+                  registers[instructions[curr_instr].rd] =
+                      registers[instructions[curr_instr].rs1] +
+                      registers[instructions[curr_instr].rs2];
+                }
               }
             } else {
               curr_stage[curr_instr] = -1;
@@ -183,22 +188,24 @@ public:
             int effective_address = base + offset;
             if (instructions[curr_instr].opcode == "lw") {
               // instructions[curr_instr].rs2 = -1;
-              if (instructions[curr_instr].rd != 0){
-              registers[instructions[curr_instr].rd] =
-                  memory[effective_address / 4];}
+              if (instructions[curr_instr].rd != 0) {
+                registers[instructions[curr_instr].rd] =
+                    memory[effective_address / 4];
+              }
               in_use[instructions[curr_instr].rd] = false;
             } else if (instructions[curr_instr].opcode == "lb") {
               // instructions[curr_instr].rs2 = -1;
               int word = memory[effective_address / 4];
               int byte_offset = effective_address % 4;
               char loaded_byte = (word >> (8 * byte_offset)) & 0xFF;
-              if (instructions[curr_instr].rd != 0){
-              if (loaded_byte & 0x80) {
-                registers[instructions[curr_instr].rd] =
-                    loaded_byte | 0xFFFFFF00;
-              } else {
-                registers[instructions[curr_instr].rd] = loaded_byte;
-              }}
+              if (instructions[curr_instr].rd != 0) {
+                if (loaded_byte & 0x80) {
+                  registers[instructions[curr_instr].rd] =
+                      loaded_byte | 0xFFFFFF00;
+                } else {
+                  registers[instructions[curr_instr].rd] = loaded_byte;
+                }
+              }
             } else if (instructions[curr_instr].opcode == "sw" or
                        instructions[curr_instr].opcode == "sb") {
               // instructions[curr_instr].rd = -1;

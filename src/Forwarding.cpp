@@ -120,8 +120,7 @@ public:
                 }
                 if (condition) {
                   if (instructions[curr_instr].opcode == "jalr") {
-                    curr_instr = registers[instructions[curr_instr].rs1] +
-                                 instructions[curr_instr].imm;
+                    curr_instr = registers[instructions[curr_instr].rs1] +instructions[curr_instr].imm;
                                  if (instructions[curr_instr].rd != 0){
                     registers[instructions[curr_instr].rd] = curr_instr;}
                   } else if (instructions[curr_instr].opcode == "jal") {
@@ -200,8 +199,7 @@ public:
                 registers[instructions[curr_instr].rd] = loaded_byte;
               }}
               in_use[instructions[curr_instr].rd] = false;
-            } else if (instructions[curr_instr].opcode == "sw" or
-                       instructions[curr_instr].opcode == "sb") {
+            } else if (instructions[curr_instr].opcode == "sw" or instructions[curr_instr].opcode == "sb") {
               // instructions[curr_instr].rd = -1;
               if (instructions[curr_instr].opcode == "sw") {
                 memory[effective_address / 4] =
