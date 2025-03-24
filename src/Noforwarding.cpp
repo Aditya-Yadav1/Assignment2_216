@@ -128,12 +128,13 @@ public:
                 if (condition) {
                   if (instructions[curr_instr].opcode == "jalr") {
                     curr_instr = (registers[instructions[curr_instr].rs1] +
-                                  instructions[curr_instr].imm) &
-                                 ~1;
-                    registers[instructions[curr_instr].rd] = curr_instr + 1;
+                                  instructions[curr_instr].imm) & ~1;
+                                  if (instructions[curr_instr].rd != 0){
+                    registers[instructions[curr_instr].rd] = curr_instr;}
                   } else if (instructions[curr_instr].opcode == "jal") {
+                    if (instructions[curr_instr].rd != 0){
                     registers[instructions[curr_instr].rd] =
-                        curr_instr + instructions[curr_instr].imm / 4;
+                        curr_instr + instructions[curr_instr].imm / 4;}
                     curr_instr += instructions[curr_instr].imm / 4;
                   } else {
                     curr_instr += instructions[curr_instr].imm / 4;
@@ -152,13 +153,15 @@ public:
                 }
               }
               if (instructions[curr_instr].opcode == "addi") {
+                if (instructions[curr_instr].rd != 0){
                 registers[instructions[curr_instr].rd] =
                     registers[instructions[curr_instr].rs1] +
-                    instructions[curr_instr].imm;
+                    instructions[curr_instr].imm;}
               } else if (instructions[curr_instr].opcode == "add") {
+                if (instructions[curr_instr].rd != 0){
                 registers[instructions[curr_instr].rd] =
                     registers[instructions[curr_instr].rs1] +
-                    registers[instructions[curr_instr].rs2];
+                    registers[instructions[curr_instr].rs2];}
               }
             } else {
               curr_stage[curr_instr] = -1;
@@ -179,21 +182,26 @@ public:
                 offset = instructions[curr_instr].imm;
             int effective_address = base + offset;
             if (instructions[curr_instr].opcode == "lw") {
+              // instructions[curr_instr].rs2 = -1;
+              if (instructions[curr_instr].rd != 0){
               registers[instructions[curr_instr].rd] =
-                  memory[effective_address / 4];
+                  memory[effective_address / 4];}
               in_use[instructions[curr_instr].rd] = false;
             } else if (instructions[curr_instr].opcode == "lb") {
+              // instructions[curr_instr].rs2 = -1;
               int word = memory[effective_address / 4];
               int byte_offset = effective_address % 4;
               char loaded_byte = (word >> (8 * byte_offset)) & 0xFF;
+              if (instructions[curr_instr].rd != 0){
               if (loaded_byte & 0x80) {
                 registers[instructions[curr_instr].rd] =
                     loaded_byte | 0xFFFFFF00;
               } else {
                 registers[instructions[curr_instr].rd] = loaded_byte;
-              }
+              }}
             } else if (instructions[curr_instr].opcode == "sw" or
                        instructions[curr_instr].opcode == "sb") {
+              // instructions[curr_instr].rd = -1;
               if (instructions[curr_instr].opcode == "sw") {
                 memory[effective_address / 4] =
                     registers[instructions[curr_instr].rs2];
@@ -327,6 +335,7 @@ void decodeInstruction(Instr &instr) {
 
   // I-type: ADDI
   case 0x13:
+    instr.rs2 = -1;
     if (funct3 == 0) {
       instr.opcode = "addi";
       // Immediate is bits [31:20]
@@ -336,6 +345,7 @@ void decodeInstruction(Instr &instr) {
 
   // I-type: JALR
   case 0x67:
+    instr.rs2 = -1;
     if (funct3 == 0) {
       instr.opcode = "jalr";
       // Immediate from bits [31:20]
@@ -345,6 +355,7 @@ void decodeInstruction(Instr &instr) {
 
   // I-type: Loads (LB)
   case 0x03:
+    instr.rs2 = -1;
     if (funct3 == 0) { // lb
       instr.opcode = "lb";
       instr.imm = ((int32_t)code) >> 20;
@@ -356,6 +367,7 @@ void decodeInstruction(Instr &instr) {
 
   // B-type: BEQ
   case 0x63:
+    instr.rd = -1;
     if (funct3 == 0) { // beq
       instr.opcode = "beq";
       int32_t imm = 0;
@@ -371,6 +383,8 @@ void decodeInstruction(Instr &instr) {
 
   // J-type: JAL
   case 0x6F: {
+    instr.rs1 = -1;
+    instr.rs2 = -1;
     instr.opcode = "jal";
     int32_t imm = 0;
     imm |= ((code >> 21) & 0x3FF) << 1; // bits [10:1]
@@ -384,6 +398,7 @@ void decodeInstruction(Instr &instr) {
   } break;
   case 0x23: // S-type: Stores (SW, SD)
   {
+    instr.rd = -1;
     int32_t imm = 0;
     imm |= ((code >> 7) & 0x1F);       // bits [4:0]
     imm |= ((code >> 25) & 0x7F) << 5; // bits [11:5]
@@ -396,15 +411,14 @@ void decodeInstruction(Instr &instr) {
       instr.opcode = "sd";
     } else if (funct3 == 000) {
       instr.opcode = "sb";
-    }}
-    break;
+    }
+  } break;
 
   default:
     instr.opcode = "unknown";
     break;
   }
-  }
-
+}
 
 void load_instructions(string filename) {
   ifstream file(filename);
