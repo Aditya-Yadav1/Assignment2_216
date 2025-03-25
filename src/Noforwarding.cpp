@@ -24,24 +24,25 @@ class Processor {
     const int MEMORY_SIZE = 1024;
     int memory[MEMORY_SIZE] = {0x93};
     vector<bool> check(5, false);
-    vector<int> curr_stage(n, -1), instr(5, -1), in_use(32, 0);
+    vector<int> in_use(32, 0);
+    vector<pair<int, int>> instr(5, {-1, -1});
     for (int i = 0; i < 5 and i < n; i++) {
-      instr[i] = i;
+      instr[i] = {i, -1};
     }
     for (int i = 0; i < m; i++) {
       int branch_taken = -1;
       bool wb = false;
-      vector<int> new_instr1 = instr;
+      vector<pair<int, int>> new_instr1 = instr;
       for (int j = 0; j < 5; j++) {
-        if (instr[j] == -1) {
+        if (instr[j].first == -1) {
           continue;
         }
-        int curr_instr = instr[j];
-        switch (curr_stage[curr_instr]) {
+        int curr_instr = instr[j].first;
+        switch (instr[j].second) {
           case -1: {
             if (!check[0]) {
               check[0] = true;
-              curr_stage[curr_instr] = 0;
+              instr[j].second = 0;
               pipeline[curr_instr][i] = stages[0];
             }
             break;
@@ -49,7 +50,7 @@ class Processor {
           case 0: {  // IF stage
             if (branch_taken != -1) {
               check[0] = false;
-              curr_stage[curr_instr] = -1;
+              instr[j].second = -1;
               break;
             }
             if (check[1]) {
@@ -57,7 +58,7 @@ class Processor {
             } else {
               check[0] = false;
               check[1] = true;
-              curr_stage[curr_instr] = 1;
+              instr[j].second = 1;
               pipeline[curr_instr][i] = stages[1];
             }
             break;
@@ -65,14 +66,14 @@ class Processor {
           case 1: {  // ID stage
             if (branch_taken != -1) {
               check[1] = false;
-              curr_stage[curr_instr] = -1;
+              instr[j].second = -1;
               break;
             }
             if (check[2] or (instructions[curr_instr].rs1 != -1 and in_use[instructions[curr_instr].rs1]) or
                 (instructions[curr_instr].rs2 != -1 and in_use[instructions[curr_instr].rs2])) {
               pipeline[curr_instr][i] = stages[5];
             } else {
-              check[1] = false, check[2] = true, curr_stage[curr_instr] = 2, pipeline[curr_instr][i] = stages[2];
+              check[1] = false, check[2] = true, instr[j].second = 2, pipeline[curr_instr][i] = stages[2];
               if (instructions[curr_instr].rd != -1) in_use[instructions[curr_instr].rd]++;
             }
             break;
@@ -84,9 +85,9 @@ class Processor {
               check[2] = false;
               if (branch_taken == -1) {
                 check[3] = true;
-                curr_stage[curr_instr] = 3;
+                instr[j].second = 3;
                 pipeline[curr_instr][i] = stages[3];
-                if (instructions[curr_instr].opcode == "beq" or instructions[curr_instr].opcode == "beqz" or instructions[curr_instr].opcode == "bne" or instructions[curr_instr].opcode == "bnez" or instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
+                if (instructions[curr_instr].opcode == "beq" or instructions[curr_instr].opcode == "bne" or instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
                   bool condition = false;
                   if (instructions[curr_instr].opcode == "beq") {
                     condition = (registers[instructions[curr_instr].rs1] == registers[instructions[curr_instr].rs2]);
@@ -105,11 +106,12 @@ class Processor {
                     } else {
                       curr_instr += instructions[curr_instr].imm / 4;
                     }
+                    new_instr1 = instr;
                     for (int k = 0; k + j + 1 < 5; k++) {
                       if (k + curr_instr < n) {
-                        new_instr1[k + 1 + j] = curr_instr + k;
+                        new_instr1[k + 1 + j] = {curr_instr + k, -1};
                       } else {
-                        new_instr1[k + 1 + j] = -1;
+                        new_instr1[k + 1 + j] = {-1, -1};
                       }
                     }
                     branch_taken = j;
@@ -122,7 +124,7 @@ class Processor {
                   registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + registers[instructions[curr_instr].rs2];
                 }
               } else {
-                curr_stage[curr_instr] = -1;
+                instr[j].second = -1;
               }
             }
             break;
@@ -134,7 +136,7 @@ class Processor {
               check[3] = false;
               check[4] = true;
               wb = true;
-              curr_stage[curr_instr] = 4;
+              instr[j].second = 4;
               pipeline[curr_instr][i] = stages[4];
               int base = registers[instructions[curr_instr].rs1], offset = instructions[curr_instr].imm;
               int effective_address = base + offset;
@@ -167,29 +169,29 @@ class Processor {
 
       if (branch_taken != -1) {
         for (int k = branch_taken + 1; k < 5; k++) {
-          if (instr[k] != -1) {
-            check[curr_stage[instr[k]]] = false;
-            curr_stage[instr[k]] = -1;
+          if (instr[k].first != -1) {
+            check[instr[k].second] = false;
+            instr[k].second = -1;
           }
         }
         instr = new_instr1;
-        if (branch_taken + 1 < 5 and instr[branch_taken + 1] != -1) {
-          curr_stage[instr[branch_taken + 1]] = 0;
-          pipeline[instr[branch_taken + 1]][i] = stages[0];
+        if (branch_taken + 1 < 5 and instr[branch_taken + 1].first != -1) {
+          instr[branch_taken + 1].second = 0;
+          pipeline[instr[branch_taken + 1].first][i] = stages[0];
           check[0] = true;
         }
       }
       if (wb) {
-        curr_stage[instr[0]] = -1;
+        instr[0].second = -1;
         check[4] = false;
-        if (instructions[instr[0]].rd != -1) {
-          in_use[instructions[instr[0]].rd]--;
+        if (instructions[instr[0].first].rd != -1) {
+          in_use[instructions[instr[0].first].rd]--;
         }
         for (int k = 0; k < 4; k++) instr[k] = instr[k + 1];
-        instr[4] = -1;
+        instr[4] = {-1, -1};
         for (int k = 3; k >= 0; k--)
-          if (instr[k] != -1) {
-            if (instr[k] + 1 < n) instr[k + 1] = instr[k] + 1;
+          if (instr[k].first != -1) {
+            if (instr[k].first + 1 < n) instr[k + 1] = {instr[k].first + 1, -1};
             break;
           }
       }
@@ -263,86 +265,86 @@ void decodeInstruction(Instr &instr) {
       }
       break;
 
-  // I-type: ADDI
-  case 0x13:
-    instr.rs2 = -1;
-    if (funct3 == 0) {
-      instr.opcode = "addi";
-      // Immediate is bits [31:20]
-      instr.imm = ((int32_t)code) >> 20;
-    }
-    break;
+    // I-type: ADDI
+    case 0x13:
+      instr.rs2 = -1;
+      if (funct3 == 0) {
+        instr.opcode = "addi";
+        // Immediate is bits [31:20]
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
 
-  // I-type: JALR
-  case 0x67:
-    instr.rs2 = -1;
-    if (funct3 == 0) {
-      instr.opcode = "jalr";
-      // Immediate from bits [31:20]
-      instr.imm = ((int32_t)code) >> 20;
-    }
-    break;
+    // I-type: JALR
+    case 0x67:
+      instr.rs2 = -1;
+      if (funct3 == 0) {
+        instr.opcode = "jalr";
+        // Immediate from bits [31:20]
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
 
-  // I-type: Loads (LB)
-  case 0x03:
-    instr.rs2 = -1;
-    if (funct3 == 0) { // lb
-      instr.opcode = "lb";
-      instr.imm = ((int32_t)code) >> 20;
-    } else if (funct3 == 0x2) {
-      instr.opcode = "lw";
-      instr.imm = ((int32_t)code) >> 20;
-    }
-    break;
+    // I-type: Loads (LB)
+    case 0x03:
+      instr.rs2 = -1;
+      if (funct3 == 0) {  // lb
+        instr.opcode = "lb";
+        instr.imm = ((int32_t)code) >> 20;
+      } else if (funct3 == 0x2) {
+        instr.opcode = "lw";
+        instr.imm = ((int32_t)code) >> 20;
+      }
+      break;
 
-  // B-type: BEQ
-  case 0x63:
-    instr.rd = -1;
-    if (funct3 == 0) { // beq
-      instr.opcode = "beq";
+    // B-type: BEQ
+    case 0x63:
+      instr.rd = -1;
+      if (funct3 == 0) {  // beq
+        instr.opcode = "beq";
+        int32_t imm = 0;
+        imm |= ((code >> 7) & 0x1) << 11;   // bit 11
+        imm |= ((code >> 8) & 0xF) << 1;    // bits [4:1]
+        imm |= ((code >> 25) & 0x3F) << 5;  // bits [10:5]
+        imm |= ((code >> 31) & 0x1) << 12;  // bit 12
+        // Sign-extend from 13 bits.
+        imm = signExtend(imm, 13);
+        instr.imm = imm;
+      }
+      break;
+
+    // J-type: JAL
+    case 0x6F: {
+      instr.rs1 = -1;
+      instr.rs2 = -1;
+      instr.opcode = "jal";
       int32_t imm = 0;
-      imm |= ((code >> 7) & 0x1) << 11;  // bit 11
-      imm |= ((code >> 8) & 0xF) << 1;   // bits [4:1]
-      imm |= ((code >> 25) & 0x3F) << 5; // bits [10:5]
-      imm |= ((code >> 31) & 0x1) << 12; // bit 12
-      // Sign-extend from 13 bits.
-      imm = signExtend(imm, 13);
+      imm |= ((code >> 21) & 0x3FF) << 1;  // bits [10:1]
+      imm |= ((code >> 20) & 0x1) << 11;   // bit [11]
+      imm |= ((code >> 12) & 0xFF) << 12;  // bits [19:12]
+      imm |= ((code >> 31) & 0x1) << 20;   // bit [20]
+      imm = signExtend(imm, 21);
+      // Do not shift left by 1 if the machine code already contains the byte
+      // offset.
       instr.imm = imm;
-    }
-    break;
+    } break;
+    case 0x23:  // S-type: Stores (SW, SD)
+    {
+      instr.rd = -1;
+      int32_t imm = 0;
+      imm |= ((code >> 7) & 0x1F);        // bits [4:0]
+      imm |= ((code >> 25) & 0x7F) << 5;  // bits [11:5]
+      imm = signExtend(imm, 12);
+      instr.imm = imm;
 
-  // J-type: JAL
-  case 0x6F: {
-    instr.rs1 = -1;
-    instr.rs2 = -1;
-    instr.opcode = "jal";
-    int32_t imm = 0;
-    imm |= ((code >> 21) & 0x3FF) << 1; // bits [10:1]
-    imm |= ((code >> 20) & 0x1) << 11;  // bit [11]
-    imm |= ((code >> 12) & 0xFF) << 12; // bits [19:12]
-    imm |= ((code >> 31) & 0x1) << 20;  // bit [20]
-    imm = signExtend(imm, 21);
-    // Do not shift left by 1 if the machine code already contains the byte
-    // offset.
-    instr.imm = imm;
-  } break;
-  case 0x23: // S-type: Stores (SW, SD)
-  {
-    instr.rd = -1;
-    int32_t imm = 0;
-    imm |= ((code >> 7) & 0x1F);       // bits [4:0]
-    imm |= ((code >> 25) & 0x7F) << 5; // bits [11:5]
-    imm = signExtend(imm, 12);
-    instr.imm = imm;
-
-    if (funct3 == 0x2) {
-      instr.opcode = "sw";
-    } else if (funct3 == 0x3) {
-      instr.opcode = "sd";
-    } else if (funct3 == 000) {
-      instr.opcode = "sb";
-    }
-  } break;
+      if (funct3 == 0x2) {
+        instr.opcode = "sw";
+      } else if (funct3 == 0x3) {
+        instr.opcode = "sd";
+      } else if (funct3 == 000) {
+        instr.opcode = "sb";
+      }
+    } break;
 
     default:
       instr.opcode = "unknown";

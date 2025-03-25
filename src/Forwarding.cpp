@@ -25,24 +25,25 @@ class Processor {
     const int MEMORY_SIZE = 1024;
     int memory[MEMORY_SIZE] = {0x93};
     vector<bool> check(5, false);
-    vector<int> curr_stage(n, -1), in_use(32, 0), instr(5, -1);
+    vector<int> in_use(32, 0);
+    vector<pair<int, int>> instr(5, {-1, -1});
     for (int i = 0; i < 5 and i < n; i++) {
-      instr[i] = i;
+      instr[i] = {i, -1};
     }
     for (int i = 0; i < m; i++) {
       int branch_taken = -1;
       bool wb = false;
-      vector<int> new_instr1 = instr;
+      vector<pair<int, int>> new_instr1 = instr;
       for (int j = 0; j < 5; j++) {
-        if (instr[j] == -1) {
+        if (instr[j].first == -1) {
           continue;
         }
-        int curr_instr = instr[j];
-        switch (curr_stage[curr_instr]) {
+        int curr_instr = instr[j].first;
+        switch (instr[j].second) {
           case -1: {
             if (!check[0]) {
               check[0] = true;
-              curr_stage[curr_instr] = 0;
+              instr[j].second = 0;
               pipeline[curr_instr][i] = stages[0];
             }
             break;
@@ -50,26 +51,26 @@ class Processor {
           case 0: {  // IF stage
             if (branch_taken != -1) {
               check[0] = false;
-              curr_stage[curr_instr] = -1;
+              instr[j].second = -1;
               break;
             }
             if (check[1]) {
               pipeline[curr_instr][i] = stages[5];
             } else {
-              check[0] = false, check[1] = true, curr_stage[curr_instr] = 1, pipeline[curr_instr][i] = stages[1];
+              check[0] = false, check[1] = true, instr[j].second = 1, pipeline[curr_instr][i] = stages[1];
             }
             break;
           }
           case 1: {  // ID stage
             if (branch_taken != -1) {
               check[1] = false;
-              curr_stage[curr_instr] = -1;
+              instr[j].second = -1;
               break;
             }
             if (check[2] or (instructions[curr_instr].rs1 != -1 and in_use[instructions[curr_instr].rs1]) or (instructions[curr_instr].rs2 != -1 and in_use[instructions[curr_instr].rs2])) {
               pipeline[curr_instr][i] = stages[5];
             } else {
-              check[1] = false, check[2] = true, curr_stage[curr_instr] = 2, pipeline[curr_instr][i] = stages[2];
+              check[1] = false, check[2] = true, instr[j].second = 2, pipeline[curr_instr][i] = stages[2];
               if (instructions[curr_instr].rd != -1) in_use[instructions[curr_instr].rd]++;
             }
             break;
@@ -77,13 +78,13 @@ class Processor {
           case 2: {  // EX stage
             if (branch_taken != -1) {
               check[2] = false;
-              curr_stage[curr_instr] = -1;
+              instr[j].second = -1;
               break;
             }
             if (check[3]) {
               pipeline[curr_instr][i] = stages[5];
             } else {
-              check[2] = false, check[3] = true, curr_stage[curr_instr] = 3, pipeline[curr_instr][i] = stages[3];
+              check[2] = false, check[3] = true, instr[j].second = 3, pipeline[curr_instr][i] = stages[3];
               if (instructions[curr_instr].opcode == "beq" or instructions[curr_instr].opcode == "bne" or instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
                 bool condition = false;
                 if (instructions[curr_instr].opcode == "beq") {
@@ -103,11 +104,12 @@ class Processor {
                   } else {
                     curr_instr += instructions[curr_instr].imm / 4;
                   }
+                  new_instr1 = instr;
                   for (int k = 0; k + j + 1 < 5; k++) {
                     if (k + curr_instr < n) {
-                      new_instr1[k + 1 + j] = curr_instr + k;
+                      new_instr1[k + 1 + j] = {curr_instr + k, -1};
                     } else {
-                      new_instr1[k + 1 + j] = -1;
+                      new_instr1[k + 1 + j] = {-1, -1};
                     }
                   }
                   branch_taken = j;
@@ -130,10 +132,9 @@ class Processor {
             if (check[4]) {
               pipeline[curr_instr][i] = stages[5];
             } else {
-              check[3] = false;
-              check[4] = true;
+              check[3] = false, check[4] = true;
               wb = true;
-              curr_stage[curr_instr] = 4;
+              instr[j].second = 4;
               pipeline[curr_instr][i] = stages[4];
               int base = registers[instructions[curr_instr].rs1], offset = instructions[curr_instr].imm;
               int effective_address = base + offset;
@@ -167,26 +168,25 @@ class Processor {
       }
       if (branch_taken != -1) {
         for (int k = branch_taken + 1; k < 5; k++) {
-          if (instr[k] != -1) {
-            check[curr_stage[instr[k]]] = false;
-            curr_stage[instr[k]] = -1;
+          if (instr[k].first != -1) {
+            check[instr[k].second] = false;
+            instr[k].second = -1;
           }
         }
         instr = new_instr1;
-        if (branch_taken + 1 < 5 and instr[branch_taken + 1] != -1) {
-          curr_stage[instr[branch_taken + 1]] = 0;
-          pipeline[instr[branch_taken + 1]][i] = stages[0];
+        if (branch_taken + 1 < 5 and instr[branch_taken + 1].first != -1) {
+          instr[branch_taken + 1].second = 0;
+          pipeline[instr[branch_taken + 1].first][i] = stages[0];
           check[0] = true;
         }
       }
       if (wb) {
-        curr_stage[instr[0]] = -1;
         check[4] = false;
         for (int k = 0; k < 4; k++) instr[k] = instr[k + 1];
-        instr[4] = -1;
+        instr[4] = {-1, -1};
         for (int k = 3; k >= 0; k--)
-          if (instr[k] != -1) {
-            if (instr[k] + 1 < n) instr[k + 1] = instr[k] + 1;
+          if (instr[k].first != -1) {
+            if (instr[k].first + 1 < n) instr[k + 1] = {instr[k].first + 1, -1};
             break;
           }
       }
