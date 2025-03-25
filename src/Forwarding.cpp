@@ -39,12 +39,19 @@ class Processor {
           continue;
         }
         int curr_instr = instr[j].first;
+        if (pipeline[curr_instr][i] != " ")
+          pipeline[curr_instr][i] += "/";
+        else {
+          pipeline[curr_instr][i] = "";
+        }
         switch (instr[j].second) {
           case -1: {
             if (!check[0]) {
               check[0] = true;
               instr[j].second = 0;
-              pipeline[curr_instr][i] = stages[0];
+              pipeline[curr_instr][i] += stages[0];
+            } else {
+              pipeline[curr_instr][i] += " ";
             }
             break;
           }
@@ -55,9 +62,10 @@ class Processor {
               break;
             }
             if (check[1]) {
-              pipeline[curr_instr][i] = stages[5];
+              pipeline[curr_instr][i] += stages[5];
             } else {
-              check[0] = false, check[1] = true, instr[j].second = 1, pipeline[curr_instr][i] = stages[1];
+              check[0] = false, check[1] = true, instr[j].second = 1;
+              pipeline[curr_instr][i] += stages[1];
             }
             break;
           }
@@ -68,23 +76,11 @@ class Processor {
               break;
             }
             if (check[2] or (instructions[curr_instr].rs1 != -1 and in_use[instructions[curr_instr].rs1]) or (instructions[curr_instr].rs2 != -1 and in_use[instructions[curr_instr].rs2])) {
-              pipeline[curr_instr][i] = stages[5];
+              pipeline[curr_instr][i] += stages[5];
             } else {
-              check[1] = false, check[2] = true, instr[j].second = 2, pipeline[curr_instr][i] = stages[2];
+              check[1] = false, check[2] = true, instr[j].second = 2;
+              pipeline[curr_instr][i] += stages[2];
               if (instructions[curr_instr].rd != -1) in_use[instructions[curr_instr].rd]++;
-            }
-            break;
-          }
-          case 2: {  // EX stage
-            if (branch_taken != -1) {
-              check[2] = false;
-              instr[j].second = -1;
-              break;
-            }
-            if (check[3]) {
-              pipeline[curr_instr][i] = stages[5];
-            } else {
-              check[2] = false, check[3] = true, instr[j].second = 3, pipeline[curr_instr][i] = stages[3];
               if (instructions[curr_instr].opcode == "beq" or instructions[curr_instr].opcode == "bne" or instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
                 bool condition = false;
                 if (instructions[curr_instr].opcode == "beq") {
@@ -113,15 +109,27 @@ class Processor {
                     }
                   }
                   branch_taken = j;
-                  in_use[instructions[curr_instr].rd]--;
                   break;
                 }
               }
+            }
+            break;
+          }
+          case 2: {  // EX stage
+            if (branch_taken != -1) {
+              check[2] = false;
+              instr[j].second = -1;
+              break;
+            }
+            if (check[3]) {
+              pipeline[curr_instr][i] += stages[5];
+            } else {
+              check[2] = false, check[3] = true, instr[j].second = 3;
+              pipeline[curr_instr][i] += stages[3];
               if (instructions[curr_instr].opcode == "addi")
                 registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm;
               else if (instructions[curr_instr].opcode == "add")
                 registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + registers[instructions[curr_instr].rs2];
-
               if (instructions[curr_instr].opcode != "lw" and instructions[curr_instr].opcode != "lb") {
                 if (instructions[curr_instr].rd != -1) in_use[instructions[curr_instr].rd]--;
               }
@@ -130,12 +138,12 @@ class Processor {
           }
           case 3: {  // MEM stage
             if (check[4]) {
-              pipeline[curr_instr][i] = stages[5];
+              pipeline[curr_instr][i] += stages[5];
             } else {
               check[3] = false, check[4] = true;
               wb = true;
               instr[j].second = 4;
-              pipeline[curr_instr][i] = stages[4];
+              pipeline[curr_instr][i] += stages[4];
               int base = registers[instructions[curr_instr].rs1], offset = instructions[curr_instr].imm;
               int effective_address = base + offset;
               if (instructions[curr_instr].opcode == "lw") {
@@ -176,7 +184,12 @@ class Processor {
         instr = new_instr1;
         if (branch_taken + 1 < 5 and instr[branch_taken + 1].first != -1) {
           instr[branch_taken + 1].second = 0;
-          pipeline[instr[branch_taken + 1].first][i] = stages[0];
+          if (pipeline[instr[branch_taken + 1].first][i] != " ")
+            pipeline[instr[branch_taken + 1].first][i] += "/";
+          else {
+            pipeline[instr[branch_taken + 1].first][i] = "";
+          }
+          pipeline[instr[branch_taken + 1].first][i] += stages[0];
           check[0] = true;
         }
       }
