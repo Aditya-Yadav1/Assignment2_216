@@ -46,6 +46,10 @@ class Processor {
         }
         switch (instr[j].second) {
           case -1: {
+            if (branch_taken != -1) {
+              instr[j].second = -1;
+              break;
+            }
             if (!check[0]) {
               check[0] = true;
               instr[j].second = 0;
