@@ -22,7 +22,7 @@ class Processor {
     int n = size(instructions), m = size(pipeline[0]);
     int registers[32] = {};
     const int MEMORY_SIZE = 1024;
-    int memory[MEMORY_SIZE] = {0x93};
+    int memory[MEMORY_SIZE] = {0};
     vector<bool> check(5, false);
     vector<int> in_use(32, 0);
     vector<pair<int, int>> instr(5, {-1, -1});
@@ -92,22 +92,24 @@ class Processor {
                 } else if (instructions[curr_instr].opcode == "blt") {
                   condition = (registers[instructions[curr_instr].rs1] < registers[instructions[curr_instr].rs2]);
                 } else if (instructions[curr_instr].opcode == "bge") {
-                  condition = (registers[instructions[curr_instr].rs1]  >= registers[instructions[curr_instr].rs2]);
-                }else if (instructions[curr_instr].opcode == "bltu") {
+                  condition = (registers[instructions[curr_instr].rs1] >= registers[instructions[curr_instr].rs2]);
+                } else if (instructions[curr_instr].opcode == "bltu") {
                   condition = ((uint32_t)(registers[instructions[curr_instr].rs1]) < (uint32_t)(registers[instructions[curr_instr].rs2]));
-                }else if (instructions[curr_instr].opcode == "bgeu") {
-                  condition = ((uint32_t)(registers[instructions[curr_instr].rs1])  >= (uint32_t)(registers[instructions[curr_instr].rs2]));
-                }else if (instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
+                } else if (instructions[curr_instr].opcode == "bgeu") {
+                  condition = ((uint32_t)(registers[instructions[curr_instr].rs1]) >= (uint32_t)(registers[instructions[curr_instr].rs2]));
+                } else if (instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
                   condition = true;
                 }
                 if (condition) {
                   if (instructions[curr_instr].opcode == "jalr") {
-                    if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = curr_instr + 1;}
+                    if (instructions[curr_instr].rd != 0) {
+                      registers[instructions[curr_instr].rd] = curr_instr + 1;
+                    }
                     curr_instr = (registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm) & ~1;
                   } else if (instructions[curr_instr].opcode == "jal") {
-                    if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = curr_instr + 1;}
+                    if (instructions[curr_instr].rd != 0) {
+                      registers[instructions[curr_instr].rd] = curr_instr + 1;
+                    }
                     curr_instr += (instructions[curr_instr].imm & ~1) / 4;
                   } else {
                     curr_instr += instructions[curr_instr].imm / 4;
@@ -136,42 +138,55 @@ class Processor {
                 check[3] = true;
                 instr[j].second = 3;
                 pipeline[curr_instr][i] += stages[3];
-                if (instructions[curr_instr].opcode == "addi"){
-                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm;}}
-                else if (instructions[curr_instr].opcode == "slli"){
-                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] << instructions[curr_instr].imm;}}
-                else if (instructions[curr_instr].opcode == "srli"){
-                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = static_cast<uint32_t>(registers[instructions[curr_instr].rs1]) >>  instructions[curr_instr].imm;}}
-                else if (instructions[curr_instr].opcode == "srai"){
-                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = static_cast<int32_t>(registers[instructions[curr_instr].rs1]) >>  instructions[curr_instr].imm;}}
-                else if (instructions[curr_instr].opcode == "add"){
-                if (instructions[curr_instr].rd != 0){
-                  registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + registers[instructions[curr_instr].rs2];}}
-                else if (instructions[curr_instr].opcode == "sub"){
-                    if (instructions[curr_instr].rd != 0){
-                      registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] - registers[instructions[curr_instr].rs2];}}
-                else if (instructions[curr_instr].opcode == "and"){
-                    if (instructions[curr_instr].rd != 0){
-                      registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] & registers[instructions[curr_instr].rs2];}}
-                else if (instructions[curr_instr].opcode == "or"){
-                    if (instructions[curr_instr].rd != 0){
-                      registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] | registers[instructions[curr_instr].rs2];}}
-                else if (instructions[curr_instr].opcode == "xor"){
-                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1]^registers[instructions[curr_instr].rs2];}}
-                else if (instructions[curr_instr].opcode == "sll"){
-                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] << (registers[instructions[curr_instr].rs2] & 0x1f);}}
-                else if (instructions[curr_instr].opcode == "srl"){
-                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = static_cast<uint32_t>(registers[instructions[curr_instr].rs1]) >> (registers[instructions[curr_instr].rs2] & 0x1f);}}
-                else if (instructions[curr_instr].opcode == "sra"){
-                  if (instructions[curr_instr].rd != 0){
-                    registers[instructions[curr_instr].rd] = static_cast<int32_t>(registers[instructions[curr_instr].rs1]) >> registers[instructions[curr_instr].rs2];}}
+                if (instructions[curr_instr].opcode == "addi") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm;
+                  }
+                } else if (instructions[curr_instr].opcode == "slli") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] << instructions[curr_instr].imm;
+                  }
+                } else if (instructions[curr_instr].opcode == "srli") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = static_cast<uint32_t>(registers[instructions[curr_instr].rs1]) >> instructions[curr_instr].imm;
+                  }
+                } else if (instructions[curr_instr].opcode == "srai") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = static_cast<int32_t>(registers[instructions[curr_instr].rs1]) >> instructions[curr_instr].imm;
+                  }
+                } else if (instructions[curr_instr].opcode == "add") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + registers[instructions[curr_instr].rs2];
+                  }
+                } else if (instructions[curr_instr].opcode == "sub") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] - registers[instructions[curr_instr].rs2];
+                  }
+                } else if (instructions[curr_instr].opcode == "and") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] & registers[instructions[curr_instr].rs2];
+                  }
+                } else if (instructions[curr_instr].opcode == "or") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] | registers[instructions[curr_instr].rs2];
+                  }
+                } else if (instructions[curr_instr].opcode == "xor") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] ^ registers[instructions[curr_instr].rs2];
+                  }
+                } else if (instructions[curr_instr].opcode == "sll") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] << (registers[instructions[curr_instr].rs2] & 0x1f);
+                  }
+                } else if (instructions[curr_instr].opcode == "srl") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = static_cast<uint32_t>(registers[instructions[curr_instr].rs1]) >> (registers[instructions[curr_instr].rs2] & 0x1f);
+                  }
+                } else if (instructions[curr_instr].opcode == "sra") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = static_cast<int32_t>(registers[instructions[curr_instr].rs1]) >> registers[instructions[curr_instr].rs2];
+                  }
+                }
               } else {
                 instr[j].second = -1;
               }
@@ -189,17 +204,18 @@ class Processor {
               pipeline[curr_instr][i] += stages[4];
               int base = registers[instructions[curr_instr].rs1], offset = instructions[curr_instr].imm;
               int effective_address = base + offset;
-              if (instructions[curr_instr].rd != 0){
-              if (instructions[curr_instr].opcode == "lw") {
-                registers[instructions[curr_instr].rd] = memory[effective_address / 4];
-              } else if (instructions[curr_instr].opcode == "lb") {
-                int word = memory[effective_address / 4];
-                int byte_offset = effective_address % 4;
-                char loaded_byte = (word >> (8 * byte_offset)) & 0xFF;
-                if (loaded_byte & 0x80)
-                  registers[instructions[curr_instr].rd] = loaded_byte | 0xFFFFFF00;
-                else
-                  registers[instructions[curr_instr].rd] = loaded_byte;}
+              if (instructions[curr_instr].rd != 0) {
+                if (instructions[curr_instr].opcode == "lw") {
+                  registers[instructions[curr_instr].rd] = memory[effective_address / 4];
+                } else if (instructions[curr_instr].opcode == "lb") {
+                  int word = memory[effective_address / 4];
+                  int byte_offset = effective_address % 4;
+                  char loaded_byte = (word >> (8 * byte_offset)) & 0xFF;
+                  if (loaded_byte & 0x80)
+                    registers[instructions[curr_instr].rd] = loaded_byte | 0xFFFFFF00;
+                  else
+                    registers[instructions[curr_instr].rd] = loaded_byte;
+                }
               } else if (instructions[curr_instr].opcode == "sw" or instructions[curr_instr].opcode == "sb") {
                 if (instructions[curr_instr].opcode == "sw")
                   memory[effective_address / 4] = registers[instructions[curr_instr].rs2];
@@ -222,6 +238,7 @@ class Processor {
           if (instr[k].first != -1) {
             check[instr[k].second] = false;
             instr[k].second = -1;
+            pipeline[instr[k].first][i] += " ";
           }
         }
         instr = new_instr1;
@@ -306,14 +323,24 @@ void decodeInstruction(Instr &instr) {
     case 0x33:
       switch (funct3) {
         case 0x0:
-          instr.opcode = (funct7 == 0x00) ? "add" : (funct7 == 0x20) ? "sub" : "";
+          instr.opcode = (funct7 == 0x00) ? "add" : (funct7 == 0x20) ? "sub"
+                                                                     : "";
           break;
-        case 0x7: instr.opcode = "and"; break;
-        case 0x6: instr.opcode = "or"; break;
-        case 0x4: instr.opcode = "xor"; break;
-        case 0x1: instr.opcode = "sll"; break;
+        case 0x7:
+          instr.opcode = "and";
+          break;
+        case 0x6:
+          instr.opcode = "or";
+          break;
+        case 0x4:
+          instr.opcode = "xor";
+          break;
+        case 0x1:
+          instr.opcode = "sll";
+          break;
         case 0x5:
-          instr.opcode = (funct7 == 0x00) ? "srl" : (funct7 == 0x20) ? "sra" : "";
+          instr.opcode = (funct7 == 0x00) ? "srl" : (funct7 == 0x20) ? "sra"
+                                                                     : "";
           break;
       }
       break;
@@ -322,11 +349,13 @@ void decodeInstruction(Instr &instr) {
     case 0x13:
       instr.imm = signExtend(code >> 20, 12);
       switch (funct3) {
-        case 0x0: instr.opcode = "addi"; break;
+        case 0x0:
+          instr.opcode = "addi";
+          break;
         case 0x1:
           if (funct7 == 0x00) {
             instr.opcode = "slli";
-            instr.imm = (code >> 20) & 0x1F; // Extract shift amount
+            instr.imm = (code >> 20) & 0x1F;  // Extract shift amount
           }
           break;
         case 0x5:
@@ -355,13 +384,27 @@ void decodeInstruction(Instr &instr) {
       instr.imm = signExtend(code >> 20, 12);
       instr.rs2 = -1;
       switch (funct3) {
-        case 0x0: instr.opcode = "lb"; break;
-        case 0x1: instr.opcode = "lh"; break;
-        case 0x2: instr.opcode = "lw"; break;
-        case 0x3: instr.opcode = "ld"; break;
-        case 0x4: instr.opcode = "lbu"; break;
-        case 0x5: instr.opcode = "lhu"; break;
-        case 0x6: instr.opcode = "lwu"; break;
+        case 0x0:
+          instr.opcode = "lb";
+          break;
+        case 0x1:
+          instr.opcode = "lh";
+          break;
+        case 0x2:
+          instr.opcode = "lw";
+          break;
+        case 0x3:
+          instr.opcode = "ld";
+          break;
+        case 0x4:
+          instr.opcode = "lbu";
+          break;
+        case 0x5:
+          instr.opcode = "lhu";
+          break;
+        case 0x6:
+          instr.opcode = "lwu";
+          break;
       }
       break;
 
@@ -374,12 +417,24 @@ void decodeInstruction(Instr &instr) {
       imm |= ((code >> 31) & 0x1) << 12;  // bit 12
       instr.imm = signExtend(imm, 13);
       switch (funct3) {
-        case 0x0: instr.opcode = "beq"; break;
-        case 0x1: instr.opcode = "bne"; break;
-        case 0x4: instr.opcode = "blt"; break;
-        case 0x5: instr.opcode = "bge"; break;
-        case 0x6: instr.opcode = "bltu"; break;
-        case 0x7: instr.opcode = "bgeu"; break;
+        case 0x0:
+          instr.opcode = "beq";
+          break;
+        case 0x1:
+          instr.opcode = "bne";
+          break;
+        case 0x4:
+          instr.opcode = "blt";
+          break;
+        case 0x5:
+          instr.opcode = "bge";
+          break;
+        case 0x6:
+          instr.opcode = "bltu";
+          break;
+        case 0x7:
+          instr.opcode = "bgeu";
+          break;
       }
       break;
     }
@@ -406,10 +461,18 @@ void decodeInstruction(Instr &instr) {
       imm |= ((code >> 25) & 0x7F) << 5;  // bits [11:5]
       instr.imm = signExtend(imm, 12);
       switch (funct3) {
-        case 0x0: instr.opcode = "sb"; break;
-        case 0x1: instr.opcode = "sh"; break;
-        case 0x2: instr.opcode = "sw"; break;
-        case 0x3: instr.opcode = "sd"; break;
+        case 0x0:
+          instr.opcode = "sb";
+          break;
+        case 0x1:
+          instr.opcode = "sh";
+          break;
+        case 0x2:
+          instr.opcode = "sw";
+          break;
+        case 0x3:
+          instr.opcode = "sd";
+          break;
       }
       break;
     }
@@ -419,7 +482,6 @@ void decodeInstruction(Instr &instr) {
       break;
   }
 }
-
 
 void load_instructions(string filename) {
   ifstream file(filename);
