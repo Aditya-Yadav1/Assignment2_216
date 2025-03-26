@@ -80,8 +80,50 @@ class Processor {
                 (instructions[curr_instr].rs2 != -1 and in_use[instructions[curr_instr].rs2])) {
               pipeline[curr_instr][i] += stages[5];
             } else {
-              check[1] = false, check[2] = true, instr[j].second = 2, pipeline[curr_instr][i] += stages[2];
+              check[1] = false, check[2] = true, instr[j].second = 2;
+              pipeline[curr_instr][i] += stages[2];
               if (instructions[curr_instr].rd != -1) in_use[instructions[curr_instr].rd]++;
+              if (instructions[curr_instr].opcode == "beq" or instructions[curr_instr].opcode == "bge" or instructions[curr_instr].opcode == "blt" or instructions[curr_instr].opcode == "bltu" or instructions[curr_instr].opcode == "bgeu" or instructions[curr_instr].opcode == "bne" or instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
+                bool condition = false;
+                if (instructions[curr_instr].opcode == "beq") {
+                  condition = (registers[instructions[curr_instr].rs1] == registers[instructions[curr_instr].rs2]);
+                } else if (instructions[curr_instr].opcode == "bne") {
+                  condition = (registers[instructions[curr_instr].rs1] != registers[instructions[curr_instr].rs2]);
+                } else if (instructions[curr_instr].opcode == "blt") {
+                  condition = (registers[instructions[curr_instr].rs1] < registers[instructions[curr_instr].rs2]);
+                } else if (instructions[curr_instr].opcode == "bge") {
+                  condition = (registers[instructions[curr_instr].rs1]  >= registers[instructions[curr_instr].rs2]);
+                }else if (instructions[curr_instr].opcode == "bltu") {
+                  condition = ((uint32_t)(registers[instructions[curr_instr].rs1]) < (uint32_t)(registers[instructions[curr_instr].rs2]));
+                }else if (instructions[curr_instr].opcode == "bgeu") {
+                  condition = ((uint32_t)(registers[instructions[curr_instr].rs1])  >= (uint32_t)(registers[instructions[curr_instr].rs2]));
+                }else if (instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
+                  condition = true;
+                }
+                if (condition) {
+                  if (instructions[curr_instr].opcode == "jalr") {
+                    if (instructions[curr_instr].rd != 0){
+                    registers[instructions[curr_instr].rd] = curr_instr + 1;}
+                    curr_instr = (registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm) & ~1;
+                  } else if (instructions[curr_instr].opcode == "jal") {
+                    if (instructions[curr_instr].rd != 0){
+                    registers[instructions[curr_instr].rd] = curr_instr + 1;}
+                    curr_instr += (instructions[curr_instr].imm & ~1) / 4;
+                  } else {
+                    curr_instr += instructions[curr_instr].imm / 4;
+                  }
+                  new_instr1 = instr;
+                  for (int k = 0; k + j + 1 < 5; k++) {
+                    if (k + curr_instr < n) {
+                      new_instr1[k + 1 + j] = {curr_instr + k, -1};
+                    } else {
+                      new_instr1[k + 1 + j] = {-1, -1};
+                    }
+                  }
+                  branch_taken = j;
+                  break;
+                }
+              }
             }
             break;
           }
@@ -94,47 +136,6 @@ class Processor {
                 check[3] = true;
                 instr[j].second = 3;
                 pipeline[curr_instr][i] += stages[3];
-                if (instructions[curr_instr].opcode == "beq" or instructions[curr_instr].opcode == "bge" or instructions[curr_instr].opcode == "blt" or instructions[curr_instr].opcode == "bltu" or instructions[curr_instr].opcode == "bgeu" or instructions[curr_instr].opcode == "bne" or instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
-                  bool condition = false;
-                  if (instructions[curr_instr].opcode == "beq") {
-                    condition = (registers[instructions[curr_instr].rs1] == registers[instructions[curr_instr].rs2]);
-                  } else if (instructions[curr_instr].opcode == "bne") {
-                    condition = (registers[instructions[curr_instr].rs1] != registers[instructions[curr_instr].rs2]);
-                  } else if (instructions[curr_instr].opcode == "blt") {
-                    condition = (registers[instructions[curr_instr].rs1] < registers[instructions[curr_instr].rs2]);
-                  } else if (instructions[curr_instr].opcode == "bge") {
-                    condition = (registers[instructions[curr_instr].rs1]  >= registers[instructions[curr_instr].rs2]);
-                  }else if (instructions[curr_instr].opcode == "bltu") {
-                    condition = ((uint32_t)(registers[instructions[curr_instr].rs1]) < (uint32_t)(registers[instructions[curr_instr].rs2]));
-                  }else if (instructions[curr_instr].opcode == "bgeu") {
-                    condition = ((uint32_t)(registers[instructions[curr_instr].rs1])  >= (uint32_t)(registers[instructions[curr_instr].rs2]));
-                  }else if (instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
-                    condition = true;
-                  }
-                  if (condition) {
-                    if (instructions[curr_instr].opcode == "jalr") {
-                      if (instructions[curr_instr].rd != 0){
-                      registers[instructions[curr_instr].rd] = curr_instr + 1;}
-                      curr_instr = (registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm) & ~1;
-                    } else if (instructions[curr_instr].opcode == "jal") {
-                      if (instructions[curr_instr].rd != 0){
-                      registers[instructions[curr_instr].rd] = curr_instr + 1;}
-                      curr_instr += (instructions[curr_instr].imm & ~1) / 4;
-                    } else {
-                      curr_instr += instructions[curr_instr].imm / 4;
-                    }
-                    new_instr1 = instr;
-                    for (int k = 0; k + j + 1 < 5; k++) {
-                      if (k + curr_instr < n) {
-                        new_instr1[k + 1 + j] = {curr_instr + k, -1};
-                      } else {
-                        new_instr1[k + 1 + j] = {-1, -1};
-                      }
-                    }
-                    branch_taken = j;
-                    break;
-                  }
-                }
                 if (instructions[curr_instr].opcode == "addi"){
                   if (instructions[curr_instr].rd != 0){
                     registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm;}}
