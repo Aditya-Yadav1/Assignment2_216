@@ -80,7 +80,7 @@ class Processor {
             } else {
               check[1] = false, check[2] = true, instr[j].second = 2;
               pipeline[curr_instr][i] += stages[2];
-              if (instructions[curr_instr].rd != -1) in_use[instructions[curr_instr].rd]++;
+              if (instructions[curr_instr].rd > 0) in_use[instructions[curr_instr].rd]++;
               if (instructions[curr_instr].opcode == "beq" or instructions[curr_instr].opcode == "bge" or instructions[curr_instr].opcode == "blt" or instructions[curr_instr].opcode == "bltu" or instructions[curr_instr].opcode == "bgeu" or instructions[curr_instr].opcode == "bne" or instructions[curr_instr].opcode == "jalr" or instructions[curr_instr].opcode == "jal") {
                 bool condition = false;
                 if (instructions[curr_instr].opcode == "beq") {
@@ -102,11 +102,13 @@ class Processor {
                   if (instructions[curr_instr].opcode == "jalr") {
                     if (instructions[curr_instr].rd != 0) {
                       registers[instructions[curr_instr].rd] = curr_instr + 1;
+                      registers[0] = 0;
                     }
                     curr_instr = (registers[instructions[curr_instr].rs1] + instructions[curr_instr].imm) & ~1;
                   } else if (instructions[curr_instr].opcode == "jal") {
                     if (instructions[curr_instr].rd != 0) {
                       registers[instructions[curr_instr].rd] = curr_instr + 1;
+                      registers[0] = 0;
                     }
                     curr_instr += (instructions[curr_instr].imm & ~1) / 4;
                   } else {
@@ -188,8 +190,9 @@ class Processor {
                 }
               }
               if (instructions[curr_instr].opcode != "lw" and instructions[curr_instr].opcode != "lb") {
-                if (instructions[curr_instr].rd != -1) in_use[instructions[curr_instr].rd]--;
+                if (instructions[curr_instr].rd > 0) in_use[instructions[curr_instr].rd]--;
               }
+              registers[0] = 0;
             }
             break;
           }
@@ -224,6 +227,8 @@ class Processor {
                   memory[effective_address / 4] = word;
                 }
               }
+              in_use[0] = 0;
+              registers[0] = 0;
             }
             break;
           }
