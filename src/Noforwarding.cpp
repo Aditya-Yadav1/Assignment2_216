@@ -307,7 +307,7 @@ class Processor {
         cout << imm;
       } else if (instructions[i].opcode == "lw" or instructions[i].opcode == "lb") {
         cout << "x" << rd << " " << imm << " x" << rs1;
-      } else if (instructions[i].opcode == "sw" or instructions[i].opcode == "sb" or instructions[i].opcode == "sd") {
+      } else if (instructions[i].opcode == "sw" or instructions[i].opcode == "sb") {
         cout << "x" << rs2 << " " << imm << " x" << rs1;
       } else {
         cout << "x" << rd << " x" << rs1 << " ";
@@ -426,9 +426,6 @@ void decodeInstruction(Instr &instr) {
         case 0x2:
           instr.opcode = "lw";
           break;
-        case 0x3:
-          instr.opcode = "ld";
-          break;
         case 0x4:
           instr.opcode = "lbu";
           break;
@@ -502,9 +499,6 @@ void decodeInstruction(Instr &instr) {
           break;
         case 0x2:
           instr.opcode = "sw";
-          break;
-        case 0x3:
-          instr.opcode = "sd";
           break;
       }
       break;

@@ -179,26 +179,25 @@ class Processor {
                 }
               } else if (opcode == "mul") {
                 if (rd != 0) {
-                  registers[rd] = registers[rs1]*registers[rs2];
+                  registers[rd] = registers[rs1] * registers[rs2];
                 }
-              }else if (opcode == "div") {
+              } else if (opcode == "div") {
                 if (rd != 0) {
-                  registers[rd] = registers[rs1]/registers[rs2];
+                  registers[rd] = registers[rs1] / registers[rs2];
                 }
-              }else if (opcode == "rem") {
+              } else if (opcode == "rem") {
                 if (rd != 0) {
-                  registers[rd] = registers[rs1]%registers[rs2];
+                  registers[rd] = registers[rs1] % registers[rs2];
                 }
-              }else if (opcode == "remu") {
+              } else if (opcode == "remu") {
                 if (rd != 0) {
-                  registers[rd] = (uint32_t)registers[rs1]%(uint32_t)registers[rs2];
+                  registers[rd] = (uint32_t)registers[rs1] % (uint32_t)registers[rs2];
                 }
-              }else if (opcode == "divu") {
+              } else if (opcode == "divu") {
                 if (rd != 0) {
-                  registers[rd] = (uint32_t)registers[rs1]/(uint32_t)registers[rs2];
+                  registers[rd] = (uint32_t)registers[rs1] / (uint32_t)registers[rs2];
                 }
-              }
-              else if (opcode == "sub") {
+              } else if (opcode == "sub") {
                 if (rd != 0) {
                   registers[rd] = registers[rs1] - registers[rs2];
                 }
@@ -318,11 +317,11 @@ class Processor {
       } else if (instructions[i].opcode == "jal") {
         cout << "x" << rd << " " << imm;
       } else if (instructions[i].opcode == "jalr") {
-        cout << "x" << rd << " " << imm << " (" << "x" << rs1 << ")";
+        cout << "x" << rd << " " << imm << "x" << rs1;
       } else if (instructions[i].opcode == "lw" or instructions[i].opcode == "lb") {
-        cout << "x" << rd << " " << imm << " (" << "x" << rs1 << ")";
-      } else if (instructions[i].opcode == "sw" or instructions[i].opcode == "sb" or instructions[i].opcode == "sd") {
-        cout << "x" << rs2 << " " << imm << " (" << "x" << rs1 << ")";
+        cout << "x" << rd << " " << imm << "x" << rs1;
+      } else if (instructions[i].opcode == "sw" or instructions[i].opcode == "sb") {
+        cout << "x" << rs2 << " " << imm << "x" << rs1;
       } else {
         cout << "x" << rd << " x" << rs1 << " ";
         if (rs2 != -1) {
@@ -367,34 +366,33 @@ void decodeInstruction(Instr &instr) {
 
   switch (opcode) {
     // R-type Instructions
-    case 0x33: // R-type Instructions
-    switch (funct3) {
-      case 0x0:
-        instr.opcode = (funct7 == 0x00) ? "add" :
-                      (funct7 == 0x20) ? "sub" :
-                      (funct7 == 0x01) ? "mul" : "";
-        break;
-      case 0x7:
-        instr.opcode = (funct7 == 0x00) ? "and" :
-        (funct7 == 0x01) ? "remu" : "";
-        break;
-      case 0x6:
-        instr.opcode = (funct7 == 0x00) ? "or" :
-                      (funct7 == 0x01) ? "rem" : "";
-        break;
-      case 0x4:
-        instr.opcode = (funct7 == 0x00) ? "xor" : 
-                      (funct7 == 0x01) ? "div" : ""; 
-        break;
-      case 0x1:
-        instr.opcode = (funct7 == 0x00) ? "sll" :
-                        "";
-        break;
-      case 0x5:
-        instr.opcode = (funct7 == 0x00) ? "srl" :
-                      (funct7 == 0x20) ? "sra" :
-                      (funct7 == 0x01) ? "divu" : "";
-        break;
+    case 0x33:  // R-type Instructions
+      switch (funct3) {
+        case 0x0:
+          instr.opcode = (funct7 == 0x00) ? "add" : (funct7 == 0x20) ? "sub"
+                                                : (funct7 == 0x01)   ? "mul"
+                                                                     : "";
+          break;
+        case 0x7:
+          instr.opcode = (funct7 == 0x00) ? "and" : (funct7 == 0x01) ? "remu"
+                                                                     : "";
+          break;
+        case 0x6:
+          instr.opcode = (funct7 == 0x00) ? "or" : (funct7 == 0x01) ? "rem"
+                                                                    : "";
+          break;
+        case 0x4:
+          instr.opcode = (funct7 == 0x00) ? "xor" : (funct7 == 0x01) ? "div"
+                                                                     : "";
+          break;
+        case 0x1:
+          instr.opcode = (funct7 == 0x00) ? "sll" : "";
+          break;
+        case 0x5:
+          instr.opcode = (funct7 == 0x00) ? "srl" : (funct7 == 0x20) ? "sra"
+                                                : (funct7 == 0x01)   ? "divu"
+                                                                     : "";
+          break;
       }
       break;
 
@@ -445,9 +443,6 @@ void decodeInstruction(Instr &instr) {
           break;
         case 0x2:
           instr.opcode = "lw";
-          break;
-        case 0x3:
-          instr.opcode = "ld";
           break;
         case 0x4:
           instr.opcode = "lbu";
@@ -522,9 +517,6 @@ void decodeInstruction(Instr &instr) {
           break;
         case 0x2:
           instr.opcode = "sw";
-          break;
-        case 0x3:
-          instr.opcode = "sd";
           break;
       }
       break;
