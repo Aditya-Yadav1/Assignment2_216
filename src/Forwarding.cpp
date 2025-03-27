@@ -308,34 +308,50 @@ class Processor {
   }
 
   void print() {
-    for (int i = 0; i < (int)size(pipeline); i++) {
+    int maxInstrWidth = 0;
+    int maxPipelineStages = 0;
+    vector<string> formattedInstructions(pipeline.size());
+    for (int i = 0; i < (int)pipeline.size(); i++) {
       int rd = instructions[i].rd, rs1 = instructions[i].rs1,
           rs2 = instructions[i].rs2, imm = instructions[i].imm;
-      cout << instructions[i].opcode << " ";
-      if (instructions[i].opcode == "beq" or instructions[i].opcode == "bne") {
-        cout << "x" << rs1 << " x" << rs2 << " " << imm;
+      ostringstream oss;
+      oss << instructions[i].opcode << " ";
+      if (instructions[i].opcode == "beq" or instructions[i].opcode == "bge" or instructions[i].opcode == "blt" or instructions[i].opcode == "bltu" or instructions[i].opcode == "bne") {
+        oss << "x" << rs1 << ", x" << rs2 << ", " << imm;
       } else if (instructions[i].opcode == "jal") {
-        cout << "x" << rd << " " << imm;
-      } else if (instructions[i].opcode == "jalr") {
-        cout << "x" << rd << " " << imm << "x" << rs1;
-      } else if (instructions[i].opcode == "lw" or instructions[i].opcode == "lb") {
-        cout << "x" << rd << " " << imm << "x" << rs1;
-      } else if (instructions[i].opcode == "sw" or instructions[i].opcode == "sb") {
-        cout << "x" << rs2 << " " << imm << "x" << rs1;
+        oss << "x" << rd << ", " << imm;
+      } else if (instructions[i].opcode == "j") {
+        oss << imm;
+      } else if (instructions[i].opcode == "lw" || instructions[i].opcode == "lb") {
+        oss << "x" << rd << ", " << imm << "(x" << rs1 << ")";
+      } else if (instructions[i].opcode == "sw" || instructions[i].opcode == "sb") {
+        oss << "x" << rs2 << ", " << imm << "(x" << rs1 << ")";
       } else {
-        cout << "x" << rd << " x" << rs1 << " ";
+        oss << "x" << rd << ", x" << rs1;
         if (rs2 != -1) {
-          cout << "x" << rs2;
-        } else {
-          cout << imm;
+          oss << ", x" << rs2;
         }
       }
-      cout << ";";
-      for (int j = 0; j < (int)size(pipeline[i]); j++) {
-        cout << pipeline[i][j] << ";";
+
+      formattedInstructions[i] = oss.str();
+      int len = (int)formattedInstructions[i].size();
+      if (len > maxInstrWidth) {
+        maxInstrWidth = len;
+      }
+      if ((int)pipeline[i].size() > maxPipelineStages) {
+        maxPipelineStages = (int)pipeline[i].size();
+      }
+    }
+    maxInstrWidth += 2;
+    cout << "\n-----------------------------\n";
+    for (int i = 0; i < (int)pipeline.size(); i++) {
+      cout << left << setw(maxInstrWidth) << formattedInstructions[i] << ";";
+      for (int j = 0; j < (int)pipeline[i].size(); j++) {
+        cout << left << setw(6) << pipeline[i][j] << ";";
       }
       cout << endl;
     }
+    cout << "-----------------------------\n";
   };
 };
 

@@ -303,7 +303,7 @@ class Processor {
           rs2 = instructions[i].rs2, imm = instructions[i].imm;
       ostringstream oss;
       oss << instructions[i].opcode << " ";
-      if (instructions[i].opcode == "beq" || instructions[i].opcode == "bne") {
+      if (instructions[i].opcode == "beq" or instructions[i].opcode == "bge" or instructions[i].opcode == "blt" or instructions[i].opcode == "bltu" or instructions[i].opcode == "bne") {
         oss << "x" << rs1 << ", x" << rs2 << ", " << imm;
       } else if (instructions[i].opcode == "jal") {
         oss << "x" << rd << ", " << imm;

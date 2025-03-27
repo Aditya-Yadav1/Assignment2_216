@@ -2,10 +2,10 @@
 -----------------------------
 addi x5, x0, x0     ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
 addi x28, x0, x3    ;      ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
-bge x4, x5, x28     ;      ;      ;IF    ;ID    ;-     ;-     ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
+bge x5, x28, 68     ;      ;      ;IF    ;ID    ;-     ;-     ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
 addi x10, x0, x0    ;      ;      ;      ;IF    ;-     ;-     ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
 addi x6, x0, x0     ;      ;      ;      ;      ;      ;      ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
-bge x4, x6, x28     ;      ;      ;      ;      ;      ;      ;      ;IF    ;ID    ;-     ;-     ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ; IF   ;ID    ;
+bge x6, x28, 36     ;      ;      ;      ;      ;      ;      ;      ;IF    ;ID    ;-     ;-     ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ; IF   ;ID    ;
 lw x5, 0(x11)       ;      ;      ;      ;      ;      ;      ;      ;      ;IF    ;-     ;-     ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;IF    ;
 lw x6, 0(x12)       ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
 mul x5, x5, x6      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;IF    ;ID    ;-     ;-     ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;      ;      ;
