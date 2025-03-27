@@ -1,11 +1,14 @@
-addi x5 x0 x0;IF;ID;EX;MEM;WB; ; ; ; ; IF;ID;EX;MEM;WB; ; ; ; ; IF;ID;EX;MEM;WB; ; ;
-addi x6 x0 x0; ;IF;ID;EX;MEM;WB; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ;IF;ID;EX;MEM;WB; ;
-bge x28 x6 x11; ; ;IF;ID;-;-;EX;MEM;WB; ; ;IF;ID;-;-;EX;MEM;WB; ; ;IF;ID;-;-;EX;
-slli x7 x6 x2; ; ; ;IF;-;-; ; ; ; ; ; ;IF;-;-; ; ; ; ; ; ;IF;-;-; ;
-add x7 x10 x7; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ;
-lw x7 0 x7; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ;
-add x5 x5 x7; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ;
-addi x6 x6 x1; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ;
-jal x0 -24; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ;
-addi x10 x5 x0; ; ; ; ; ; ; IF;ID;EX;MEM;WB; ; ; ; ; IF;ID;EX;MEM;WB; ; ; ; ; IF;
-jalr x0 x1 ; ; ; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ;
+
+-----------------------------
+addi x5, x0, x0   ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ; IF   ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ; IF   ;ID    ;EX    ;MEM   ;WB    ;      ;      ;
+addi x6, x0, x0   ;      ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;
+bge x28, x6, x11  ;      ;      ;IF    ;ID    ;-     ;-     ;EX    ;MEM   ;WB    ;      ;      ;IF    ;ID    ;-     ;-     ;EX    ;MEM   ;WB    ;      ;      ;IF    ;ID    ;-     ;-     ;EX    ;
+slli x7, x6, x2   ;      ;      ;      ;IF    ;-     ;-     ;      ;      ;      ;      ;      ;      ;IF    ;-     ;-     ;      ;      ;      ;      ;      ;      ;IF    ;-     ;-     ;      ;
+add x7, x10, x7   ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
+lw x7, 0(x7)      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
+add x5, x5, x7    ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
+addi x6, x6, x1   ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
+jal x0, -24       ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;      ;
+addi x10, x5, x0  ;      ;      ;      ;      ;      ;      ; IF   ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ; IF   ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ; IF   ;
+jalr x0, x1       ;      ;      ;      ;      ;      ;      ;      ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;IF    ;ID    ;EX    ;MEM   ;WB    ;      ;      ;      ;      ;
+-----------------------------
