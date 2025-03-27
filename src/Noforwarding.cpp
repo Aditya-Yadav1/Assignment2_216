@@ -164,7 +164,28 @@ class Processor {
                   if (instructions[curr_instr].rd != 0) {
                     registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] + registers[instructions[curr_instr].rs2];
                   }
-                } else if (instructions[curr_instr].opcode == "sub") {
+                } else if (instructions[curr_instr].opcode == "mul") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1]*registers[instructions[curr_instr].rs2];
+                  }
+                }else if (instructions[curr_instr].opcode == "div") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1]/registers[instructions[curr_instr].rs2];
+                  }
+                }else if (instructions[curr_instr].opcode == "rem") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1]%registers[instructions[curr_instr].rs2];
+                  }
+                }else if (instructions[curr_instr].opcode == "remu") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = (uint32_t)(registers[instructions[curr_instr].rs1])%(uint32_t)registers[instructions[curr_instr].rs2];
+                  }
+                }else if (instructions[curr_instr].opcode == "divu") {
+                  if (instructions[curr_instr].rd != 0) {
+                    registers[instructions[curr_instr].rd] = (uint32_t)(registers[instructions[curr_instr].rs1])/(uint32_t)registers[instructions[curr_instr].rs2];
+                  }
+                }
+                else if (instructions[curr_instr].opcode == "sub") {
                   if (instructions[curr_instr].rd != 0) {
                     registers[instructions[curr_instr].rd] = registers[instructions[curr_instr].rs1] - registers[instructions[curr_instr].rs2];
                   }
@@ -328,30 +349,35 @@ void decodeInstruction(Instr &instr) {
   instr.opcode.clear();
 
   switch (opcode) {
-    // R-type Instructions
-    case 0x33:
-      switch (funct3) {
-        case 0x0:
-          instr.opcode = (funct7 == 0x00) ? "add" : (funct7 == 0x20) ? "sub"
-                                                                     : "";
-          break;
-        case 0x7:
-          instr.opcode = "and";
-          break;
-        case 0x6:
-          instr.opcode = "or";
-          break;
-        case 0x4:
-          instr.opcode = "xor";
-          break;
-        case 0x1:
-          instr.opcode = "sll";
-          break;
-        case 0x5:
-          instr.opcode = (funct7 == 0x00) ? "srl" : (funct7 == 0x20) ? "sra"
-                                                                     : "";
-          break;
-      }
+    case 0x33: // R-type Instructions
+    switch (funct3) {
+      case 0x0:
+        instr.opcode = (funct7 == 0x00) ? "add" :
+                      (funct7 == 0x20) ? "sub" :
+                      (funct7 == 0x01) ? "mul" : "";
+        break;
+      case 0x7:
+        instr.opcode = (funct7 == 0x00) ? "and" :
+        (funct7 == 0x01) ? "remu" : "";
+        break;
+      case 0x6:
+        instr.opcode = (funct7 == 0x00) ? "or" :
+                      (funct7 == 0x01) ? "rem" : "";
+        break;
+      case 0x4:
+        instr.opcode = (funct7 == 0x00) ? "xor" : 
+                      (funct7 == 0x01) ? "div" : ""; 
+        break;
+      case 0x1:
+        instr.opcode = (funct7 == 0x00) ? "sll" :
+                        "";
+        break;
+      case 0x5:
+        instr.opcode = (funct7 == 0x00) ? "srl" :
+                      (funct7 == 0x20) ? "sra" :
+                      (funct7 == 0x01) ? "divu" : "";
+        break;
+  }
       break;
 
     // I-type Instructions

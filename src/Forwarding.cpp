@@ -177,7 +177,28 @@ class Processor {
                 if (rd != 0) {
                   registers[rd] = registers[rs1] + registers[rs2];
                 }
-              } else if (opcode == "sub") {
+              } else if (opcode == "mul") {
+                if (rd != 0) {
+                  registers[rd] = registers[rs1]*registers[rs2];
+                }
+              }else if (opcode == "div") {
+                if (rd != 0) {
+                  registers[rd] = registers[rs1]/registers[rs2];
+                }
+              }else if (opcode == "rem") {
+                if (rd != 0) {
+                  registers[rd] = registers[rs1]%registers[rs2];
+                }
+              }else if (opcode == "remu") {
+                if (rd != 0) {
+                  registers[rd] = (uint32_t)registers[rs1]%(uint32_t)registers[rs2];
+                }
+              }else if (opcode == "divu") {
+                if (rd != 0) {
+                  registers[rd] = (uint32_t)registers[rs1]/(uint32_t)registers[rs2];
+                }
+              }
+              else if (opcode == "sub") {
                 if (rd != 0) {
                   registers[rd] = registers[rs1] - registers[rs2];
                 }
@@ -346,28 +367,34 @@ void decodeInstruction(Instr &instr) {
 
   switch (opcode) {
     // R-type Instructions
-    case 0x33:
-      switch (funct3) {
-        case 0x0:
-          instr.opcode = (funct7 == 0x00) ? "add" : (funct7 == 0x20) ? "sub"
-                                                                     : "";
-          break;
-        case 0x7:
-          instr.opcode = "and";
-          break;
-        case 0x6:
-          instr.opcode = "or";
-          break;
-        case 0x4:
-          instr.opcode = "xor";
-          break;
-        case 0x1:
-          instr.opcode = "sll";
-          break;
-        case 0x5:
-          instr.opcode = (funct7 == 0x00) ? "srl" : (funct7 == 0x20) ? "sra"
-                                                                     : "";
-          break;
+    case 0x33: // R-type Instructions
+    switch (funct3) {
+      case 0x0:
+        instr.opcode = (funct7 == 0x00) ? "add" :
+                      (funct7 == 0x20) ? "sub" :
+                      (funct7 == 0x01) ? "mul" : "";
+        break;
+      case 0x7:
+        instr.opcode = (funct7 == 0x00) ? "and" :
+        (funct7 == 0x01) ? "remu" : "";
+        break;
+      case 0x6:
+        instr.opcode = (funct7 == 0x00) ? "or" :
+                      (funct7 == 0x01) ? "rem" : "";
+        break;
+      case 0x4:
+        instr.opcode = (funct7 == 0x00) ? "xor" : 
+                      (funct7 == 0x01) ? "div" : ""; 
+        break;
+      case 0x1:
+        instr.opcode = (funct7 == 0x00) ? "sll" :
+                        "";
+        break;
+      case 0x5:
+        instr.opcode = (funct7 == 0x00) ? "srl" :
+                      (funct7 == 0x20) ? "sra" :
+                      (funct7 == 0x01) ? "divu" : "";
+        break;
       }
       break;
 
