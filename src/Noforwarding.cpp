@@ -375,6 +375,9 @@ void decodeInstruction(Instr &instr) {
                                                 : (funct7 == 0x01)   ? "divu"
                                                                      : "";
           break;
+        default:
+          instr.opcode = "unknown";
+          break;
       }
       break;
 
@@ -399,6 +402,9 @@ void decodeInstruction(Instr &instr) {
             instr.opcode = "srai";
             instr.imm = (code >> 20) & 0x1F;
           }
+          break;
+        default:
+          instr.opcode = "unknown";
           break;
       }
       break;
@@ -435,6 +441,9 @@ void decodeInstruction(Instr &instr) {
         case 0x6:
           instr.opcode = "lwu";
           break;
+        default:
+          instr.opcode = "unknown";
+          break;
       }
       break;
 
@@ -464,6 +473,9 @@ void decodeInstruction(Instr &instr) {
           break;
         case 0x7:
           instr.opcode = "bgeu";
+          break;
+        default:
+          instr.opcode = "unknown";
           break;
       }
       break;
@@ -500,6 +512,9 @@ void decodeInstruction(Instr &instr) {
         case 0x2:
           instr.opcode = "sw";
           break;
+        default:
+          instr.opcode = "unknown";
+          break;
       }
       break;
     }
@@ -507,6 +522,9 @@ void decodeInstruction(Instr &instr) {
     default:
       instr.opcode = "unknown";
       break;
+  }
+  if (instr.opcode == "unknown") {
+    exit(1);
   }
 }
 

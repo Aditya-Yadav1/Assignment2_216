@@ -6,7 +6,7 @@ addi x6 x0 x0; ; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ; ; ; ; ; ; ; ; ; ;
 bge x4 x6 x28; ; ; ; ; ; ; ;IF;ID;-;-;EX;MEM;WB; ; ; ; ; ; ; ; ; ; IF;ID;
 lw x5 0 x11; ; ; ; ; ; ; ; ;IF;-;-;ID;EX;MEM;WB; ; ; ; ; ; ; ; ; ;IF;
 lw x6 0 x12; ; ; ; ; ; ; ; ; ; ; ;IF;ID;EX;MEM;WB; ; ; ; ; ; ; ; ; ;
- x5 x5 x6; ; ; ; ; ; ; ; ; ; ; ; ;IF;ID;-;-;EX;MEM;WB; ; ; ; ; ; ;
+mul x5 x5 x6; ; ; ; ; ; ; ; ; ; ; ; ;IF;ID;-;-;EX;MEM;WB; ; ; ; ; ; ;
 add x10 x10 x5; ; ; ; ; ; ; ; ; ; ; ; ; ;IF;-;-;ID;-;-;EX;MEM;WB; ; ; ;
 addi x6 x6 x1; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ;IF;-;-;ID;EX;MEM;WB; ; ;
 addi x11 x11 x4; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ; ;IF;ID;EX;MEM;WB; ;
