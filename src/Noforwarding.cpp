@@ -2,6 +2,7 @@
 using namespace std;
 
 struct Instr {
+  string str;
   uint32_t machineCode;  // The 32-bit instruction in hex
   string opcode;         // e.g. "addi", "add", "beq", "jal", "lb"
   int rd, rs1, rs2;
@@ -299,28 +300,8 @@ class Processor {
     int maxPipelineStages = 0;
     vector<string> formattedInstructions(pipeline.size());
     for (int i = 0; i < (int)pipeline.size(); i++) {
-      int rd = instructions[i].rd, rs1 = instructions[i].rs1,
-          rs2 = instructions[i].rs2, imm = instructions[i].imm;
-      ostringstream oss;
-      oss << instructions[i].opcode << " ";
-      if (instructions[i].opcode == "beq" or instructions[i].opcode == "bge" or instructions[i].opcode == "blt" or instructions[i].opcode == "bltu" or instructions[i].opcode == "bne") {
-        oss << "x" << rs1 << ", x" << rs2 << ", " << imm;
-      } else if (instructions[i].opcode == "jal") {
-        oss << "x" << rd << ", " << imm;
-      } else if (instructions[i].opcode == "j") {
-        oss << imm;
-      } else if (instructions[i].opcode == "lw" || instructions[i].opcode == "lb") {
-        oss << "x" << rd << ", " << imm << "(x" << rs1 << ")";
-      } else if (instructions[i].opcode == "sw" || instructions[i].opcode == "sb") {
-        oss << "x" << rs2 << ", " << imm << "(x" << rs1 << ")";
-      } else {
-        oss << "x" << rd << ", x" << rs1;
-        if (rs2 != -1) {
-          oss << ", x" << rs2;
-        }
-      }
-
-      formattedInstructions[i] = oss.str();
+      formattedInstructions[i] = instructions[i].str;  // Use the instruction string
+      formattedInstructions[i].pop_back();
       int len = (int)formattedInstructions[i].size();
       if (len > maxInstrWidth) {
         maxInstrWidth = len;
@@ -335,6 +316,9 @@ class Processor {
       cout << left << setw(maxInstrWidth) << formattedInstructions[i] << ";";
       for (int j = 0; j < (int)pipeline[i].size(); j++) {
         cout << left << setw(6) << pipeline[i][j] << ";";
+      }
+      for (int j = (int)pipeline[i].size(); j < maxPipelineStages; j++) {
+        cout << left << setw(6) << " " << ";";
       }
       cout << endl;
     }
@@ -551,12 +535,12 @@ void decodeInstruction(Instr &instr) {
 void load_instructions(string filename) {
   ifstream file(filename);
   string line;
+
   while (getline(file, line)) {
     Instr instr;
-    {
-      istringstream iss(line);
-      iss >> hex >> instr.machineCode;
-    }
+    istringstream iss(line);
+    iss >> hex >> instr.machineCode;
+    getline(iss >> ws, instr.str);
     decodeInstruction(instr);
     instructions.push_back(instr);
   }
