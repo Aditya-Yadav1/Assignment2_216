@@ -72,7 +72,7 @@ This project supports a subset of RISC V instructions:
 - **Register File:** 32 registers (`$0` to `$31`), with `$0` always holding `0`.
 - **Memory Layout:** Simulated as an array storing instructions and data. Capacity if of 4 kb, initialised with "0".
 - **Word Alignment:** All addresses are word-aligned, with data access in 4-byte chunks.
-
+- **Hard-wired x0:** Register x0 is hardwired to 0 always as it is in real.
 ---
 
 ## 📊 **Performance Considerations**
@@ -85,7 +85,12 @@ This project supports a subset of RISC V instructions:
    - Speedup depends on the percentage of data-dependent instructions.
 
 ---
-
+## **Sources **
+- **ChatGPT/Perplexity** for loading instructions using machine code, it helped me to decode it from file and write the operations also it gave some hints 
+      for debugging many segmentation faults.
+- **RIPES** for analyzing the pipeline diagram and getting the real code of many pseudo-instructions
+- **RISC-V book** for taking the instructions  
+---
 ## **Known Issues and Limitations**
 
 ### 1. **No Forwarding Version**
