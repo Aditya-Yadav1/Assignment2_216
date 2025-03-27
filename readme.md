@@ -103,4 +103,9 @@ This project supports a subset of RISC V instructions:
 ---
 
 ## 📂 **Directory Structure**
-- 
+ - `src/`: Source code for the simulator.
+    - contains forwarding.cpp and nonforwarding.cpp for the two different kind of processors.
+ - `input/`: contains test cases for the simulator.
+ - `output/`: stores the output of the test cases.
+ - `README.md`: This file.
+ - `Makefile`: Build script for the project.

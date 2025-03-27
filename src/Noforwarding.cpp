@@ -27,7 +27,7 @@ class Processor {
     vector<int> in_use(32, 0);
     vector<pair<int, int>> instr(5, {-1, -1});
     for (int i = 0; i < 5 and i < n; i++) {
-      instr[i] = {i, -1};
+      instr[i] = {i, -1}; 
     }
     for (int i = 0; i < m; i++) {
       int branch_taken = -1;
